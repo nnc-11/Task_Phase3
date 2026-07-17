@@ -15,6 +15,7 @@ Thư mục này là Terraform staging cho audit foundation của TF3. Nó chưa 
 
 - CloudTrail chỉ được tạo sau Object Lock COMPLIANCE, versioning, SSE-S3, public-access block và bucket policy.
 - Bucket policy chỉ cho CloudTrail của đúng trail ARN ghi log; mọi principal không phải `cloudtrail.amazonaws.com` bị `Deny` các object mutation của archive.
+- Trail được tag `Project=TF3`, `Mandate=12`, `Protected=true`; Terraform từ chối plan nếu `s3_data_event_arns` vô tình chứa audit archive (tránh recursive logging).
 - Rule dùng đúng EventBridge `source` của từng service: `aws.cloudtrail`, `aws.s3`, `aws.events`, `aws.sns`, `aws.iam`.
 - Cả hai SNS email subscription có `prevent_destroy`; sau apply phải xác nhận cả hai email.
 
@@ -42,4 +43,4 @@ terraform validate
 Không chạy `plan`/`apply` từ thư mục staging này cho đến khi backend, scope S3, email owner, cost approval và IAM change riêng đã được phê duyệt.
 
 ---
-Version: 1.0 | 2026-07-18
+Version: 1.1 | 2026-07-18

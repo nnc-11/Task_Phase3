@@ -14,7 +14,7 @@ Deploy sau foundation, trong Terraform state/PR IAM riêng. Khi được duyệt
 
 Input bắt buộc lấy từ output foundation thật:
 
-1. `audit_bucket_arn`, `audit_trail_arn`, cả hai `alert_topic_arns` (`alert_topic_arn`, `global_alert_topic_arn`) và **toàn bộ 12** `audit_rule_arns` từ hai output map foundation. Không tự chọn subset: map primary có `trail`, `trail_selectors`, `bucket`, `event_rule`, `event_target`, `sns_topic`, `sns_subscription`; map global có `iam`, `event_rule`, `event_target`, `sns_topic`, `sns_subscription`.
+1. `audit_bucket_arn`, `audit_trail_arn`, cả hai `alert_topic_arns` (`alert_topic_arn` ở `ap-southeast-1`, `global_alert_topic_arn` ở `us-east-1`) và **toàn bộ 12** `audit_rule_arns` từ hai output map foundation. Validation từ chối mọi input không đúng chính xác 2 topic và 12 rule; không tự chọn subset. Map primary có `trail`, `trail_selectors`, `bucket`, `event_rule`, `event_target`, `sns_topic`, `sns_subscription`; map global có `iam`, `event_rule`, `event_target`, `sns_topic`, `sns_subscription`.
 2. `trusted_principal_arns`: chỉ user/role security owner định danh được, MFA-capable; tuyệt đối không dùng account root hoặc wildcard account principal.
 3. `require_mfa = true` cho người vận hành. Nếu role CI không có MFA, không thêm nó vào trust này; tạo role CI tối thiểu riêng và đưa qua review.
 
@@ -39,6 +39,6 @@ Sau apply, lưu hai output role ARN. Trong **bản boundary allowlisted** (khôn
 
 ---
 
-**Phiên bản:** v1.0  
+**Phiên bản:** v1.1  
 **Cập nhật:** 18/07/2026  
 **Trạng thái:** STAGING — không deploy trước foundation, trust-owner review và change approval

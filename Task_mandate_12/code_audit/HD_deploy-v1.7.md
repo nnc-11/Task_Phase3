@@ -150,6 +150,8 @@ aws sns list-subscriptions-by-topic --topic-arn "<alert-topic-arn-from-terraform
 aws sns list-subscriptions-by-topic --topic-arn "<global-alert-topic-arn-from-terraform-output>"
 ```
 
+Khi điền `audit_access/terraform.tfvars`, giữ nguyên Region từ output: 7 rule/topic primary là `ap-southeast-1`; 5 rule/topic global là `us-east-1`. Root audit-access từ chối plan nếu không nhận **đúng 2 topic và 12 rule**. `s3_data_event_arns` cũng tự từ chối audit archive để tránh recursive CloudTrail logging.
+
 `PendingConfirmation` ở bước này vẫn cho phép deploy **audit_access read-only/break-glass root** ở bước 3, nhưng là `NO-GO` cho render/create/attach boundary. Sau audit-access apply, chờ **cả hai** email subscription là `Confirmed`, chạy refresh state theo change approval, lấy hai subscription ARN thực tế từ Terraform outputs/list command và lưu chúng vào IAM PR/evidence. Thiếu một ARN hoặc không thể xác nhận recipient vẫn là `NO-GO` cho boundary, vì policy phải bảo vệ đúng cả primary và global alert plane.
 
 3. Tạo branch `chore/mandate-12-iam-boundary` độc lập. Sau IaC-owner approval, copy **toàn bộ standalone root** `code_audit/iam_hardening/audit_access/` vào `infra/live/iam/mandate-12/audit_access/`, dùng backend state key riêng `mandate-12/audit_access/terraform.tfstate`. Điền audit bucket/trail ARN, **cả hai** SNS topic ARN, toàn bộ 12 primary/global rule ARN và exact MFA-capable security owner ARNs theo `audit_access/README.md`; plan/apply root này trước attachment. Không đặt nó trong `infra/live/audit/` hoặc `infra/live/production/`.
@@ -603,6 +605,6 @@ Không rollback bằng cách tắt trail hoặc xóa audit bucket. Khi selector 
 
 ---
 
-**Phiên bản:** v1.6  
+**Phiên bản:** v1.7  
 **Cập nhật:** 18/07/2026  
 **Trạng thái:** READY FOR REVIEW — chưa được phép deploy
