@@ -1,0 +1,2 @@
+File Tham khảo đề bài. 
+Một số mandate đã chạy or chưa chạy trong repo dự án, nên làm mandate độc lập tránh phụ thuộc nhầm.(chỉ phụ thuộc nếu có ràng buộc)

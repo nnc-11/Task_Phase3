@@ -1,5 +1,7 @@
 # Đề xuất solution Mandate 12 và trade-off
 
+> Organization trail và cross-account archive trong tài liệu này là **TARGET state**. Repository chưa chứng minh TF3 đã thuộc Organization hoặc các control này đang chạy; triển khai phải bắt đầu bằng live discovery trong runbook.
+
 ## 1. Quyết định đề xuất
 
 Chọn mô hình **organization trail do security/log-archive account ngoài TF3 sở hữu**, ghi all-region management events và data events có scope vào S3 Object Lock Compliance, bật CloudTrail log file integrity validation, đồng thời phát hiện anti-audit API qua EventBridge sang kênh cảnh báo do security account kiểm soát.

@@ -5,7 +5,15 @@ NOTE: Tham khảo thôi: file Mandate 12 từ BTC đã rõ rồi(file đó ngắ
 
 Mandate 12 **áp dụng cho TF3** và được phân tích trên repository `Phase3-TF3-Infra-Sentinel`, AWS account được tài liệu hóa là `197826770971`. Chữ “TF4” trong tên/nội dung file mandate nguồn là lỗi đặt tên, không phải giới hạn phạm vi. Trước khi thay đổi production vẫn phải xác định rõ chủ sở hữu lớp AWS Organizations/log archive vì lớp này cần nằm ngoài quyền của TF3 operator.
 
-Nguồn mandate: `MANDATE-12-audit-anti-defeat-tf4_BTC.md`. Hạn nộp ghi trong mandate: hết ngày **20/07/2026**.
+Nguồn mandate: `MANDATE-12-audit-anti-defeat-_BTC.md`. Hạn nộp ghi trong mandate: hết ngày **20/07/2026**.
+
+### Quy ước khớp hiện trạng
+
+- `CONFIRMED-REPO`: có cấu hình hoặc tài liệu ownership trong repository hiện tại.
+- `VERIFY-LIVE`: repository không đủ chứng minh, bắt buộc kiểm tra AWS/EKS đang chạy.
+- `TARGET`: giải pháp Mandate 12 chưa được triển khai.
+
+Organization trail, cross-account archive, Object Lock của Mandate 4 và EKS audit live không được coi là đang tồn tại chỉ vì xuất hiện trong thiết kế. Chúng phải có evidence live trước khi chuyển từ `VERIFY-LIVE`/`TARGET` sang `DEPLOYED` hoặc `VERIFIED`.
 
 ## 2. Mục tiêu nghiệp vụ
 
@@ -16,6 +24,16 @@ Audit trail phải đứng vững trước ba cách vô hiệu hóa mà không c
 3. **Làm mỏng hoặc sửa:** log thiếu chi tiết hoặc bị thêm/xóa/sửa sau khi ghi.
 
 Kết quả không được chỉ là “có log” hoặc “append-only”; mentor phải tự thực hiện đòn tấn công và team phải đưa ra bằng chứng độc lập.
+
+### Baseline kế thừa từ Mandate 4
+
+Mandate 12 kế thừa, không thay thế các năng lực đã yêu cầu ở Mandate 4:
+
+- audit ở cả tầng cloud và Kubernetes/EKS;
+- change trail đủ dựng lại ai thay đổi gì, khi nào và nội dung thay đổi;
+- bài forensic tại chỗ trong thời gian giới hạn;
+- mọi hành động quy về danh tính cá nhân/session, không dùng tài khoản chung;
+- tái sử dụng bằng chứng Object Lock/tamper protection của Mandate 4, sau đó bổ sung anti-blind, coverage và cryptographic validation của Mandate 12.
 
 ## 3. Đầu vào bắt buộc
 
@@ -39,6 +57,7 @@ Kết quả không được chỉ là “có log” hoặc “append-only”; me
 - Khung retention được phê duyệt.
 - Một principal mentor thử nghiệm có quyền đọc secret/bucket mẫu nhưng không có quyền quản trị audit plane.
 - Cửa sổ demo và quy tắc không dùng secret thật trong ảnh chụp/output.
+- Evidence Mandate 4 hiện có: bucket/Object Lock, K8s audit, CloudTrail/change trail, identity mapping và bài forensic trước đây; mục nào không có evidence live phải đánh dấu `UNKNOWN`, không mặc định đã đạt.
 
 ## 4. Yêu cầu chức năng và tiêu chí chấp nhận
 
@@ -52,6 +71,7 @@ Kết quả không được chỉ là “có log” hoặc “append-only”; me
 | M12-06 | Giữ đủ lâu | Khuyến nghị 365 ngày WORM online/archive, có lifecycle tối ưu storage nhưng không rút ngắn lock; lý do: bao phủ dwell time nhiều ngày, phát hiện muộn và điều tra hồi tố. |
 | M12-07 | Phát hiện anti-audit | Cảnh báo các API CloudTrail destructive/configuration, thay đổi bucket policy/Object Lock/lifecycle, KMS disable/schedule deletion, Organizations/trusted-access và hành vi rời organization. |
 | M12-08 | Không phá ràng buộc | Storefront vẫn public, ops private; không sửa/vô hiệu hóa flagd; tổng AWS cost vẫn dưới khoảng `$300/tuần/TF`. |
+| M12-09 | Forensic và danh tính kế thừa | Từ một event mentor chọn, dựng timeline cloud + Kubernetes + Git/change trail về đúng principal/session và nội dung thay đổi trong thời gian giới hạn; không chấp nhận tài khoản dùng chung không truy về cá nhân. |
 
 ## 5. Gói đầu ra phải nộp
 

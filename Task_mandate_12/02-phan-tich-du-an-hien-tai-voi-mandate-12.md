@@ -15,7 +15,8 @@ Mandate 12 áp dụng cho TF3. Chữ “TF4” trong file mandate nguồn là l�
 - External Secrets role được cấp `secretsmanager:GetSecretValue` cho flagd sync token.
 - GitHub Terraform apply role gắn `AdministratorAccess`; `infra/README.md` xác nhận đây là hardening còn mở.
 - `production.auto.tfvars` còn một IAM user admin trong `eks_admin_principal_arns`.
-- Auditability hiện xuất hiện chủ yếu ở Git/ADR/runbook, Kyverno Audit, CloudTrail tra cứu thủ công và EKS audit log; chưa có audit plane chống vô hiệu hóa được codify.
+- Auditability hiện xuất hiện chủ yếu ở Git/ADR/runbook, Kyverno Audit và các tài liệu mô tả tra cứu CloudTrail/EKS audit; chưa có audit plane chống vô hiệu hóa được codify. Trạng thái CloudTrail/EKS audit live vẫn phải xác minh.
+- Tài liệu thiết kế mentor access có tuyên bố EKS control-plane audit logging ghi Kubernetes actions, nhưng tìm kiếm tĩnh không thấy `cluster_enabled_log_types`/cấu hình tương đương trong Terraform. Vì vậy trạng thái EKS audit live là **UNKNOWN**, cần kiểm tra thay vì coi tài liệu thiết kế là bằng chứng triển khai.
 
 ## 3. Bằng chứng thiếu trong Terraform hiện tại
 
@@ -30,6 +31,21 @@ Inventory resource type dưới `infra/**/*.tf` không có các resource sau:
 - AWS Config/conformance controls giám sát drift của audit plane.
 
 Điều này không chứng minh live account hoàn toàn không có CloudTrail; nó chứng minh repository hiện **không sở hữu/codify** các kiểm soát cần để tái tạo và review.
+
+### Ma trận hiện trạng dùng cho Mandate 12
+
+| Thành phần | Trạng thái | Căn cứ/phạm vi sử dụng |
+|---|---|---|
+| AWS account `197826770971`, region chính `ap-southeast-1` | `CONFIRMED-REPO` | Có trong `infra/README.md` và production Terraform; account identity vẫn phải đối chiếu live trước test. |
+| EKS private-only, SSM/Cloudflare ops access, CloudFront edge | `CONFIRMED-REPO` | Không thay đổi trong Mandate 12. |
+| EKS KMS encryption và secret `techx-tf3/flagd-sync-token` | `CONFIRMED-REPO` | Có Terraform/External Secrets config; không đọc secret value trong inventory. |
+| Terraform apply role còn `AdministratorAccess` | `CONFIRMED-REPO` | Là rủi ro trực tiếp cho account-local audit plane. |
+| Organization membership/management account/delegated admin | `VERIFY-LIVE` | Chưa được chứng minh trong repository. |
+| CloudTrail trail/event selectors/log validation đang chạy | `VERIFY-LIVE` | Không có `aws_cloudtrail` trong Terraform production hiện tại. |
+| Object Lock/bucket evidence từ Mandate 4 | `VERIFY-LIVE` | Mandate 4 nói đã chứng minh, nhưng repository được đọc không codify đủ bucket/policy/evidence để tái xác nhận. |
+| EKS control-plane audit log và retention | `VERIFY-LIVE` | Có tuyên bố trong design, chưa thấy `cluster_enabled_log_types` hoặc cấu hình tương đương. |
+| PostgreSQL/ElastiCache/MSK secret của Mandate 8 | `VERIFY-LIVE` | Chỉ thêm coverage nếu resource thực sự tồn tại lúc triển khai Mandate 12. |
+| Organization trail, cross-account WORM archive, anti-audit alert | `TARGET` | Là giải pháp Mandate 12, không phải hiện trạng. |
 
 ## 4. Gap assessment
 
@@ -46,6 +62,8 @@ Inventory resource type dưới `infra/**/*.tf` không có các resource sau:
 | Retention | Không có audit-log lifecycle/retention | **FAIL** | 365 ngày lock; lifecycle tiering; policy ngăn giảm retention. |
 | Ngân sách | Chưa có baseline event volume/cost model | **UNKNOWN** | Đo volume trước; scope S3 data events; budget alarm; tránh duplicate trails lâu dài. |
 | Storefront/ops/flagd | Kiến trúc hiện tại phù hợp | **PASS nếu không chạm** | Module audit phải tách biệt, không sửa edge, EKS routing hay flagd. |
+| K8s audit + forensic (kế thừa M4) | Có mô tả trong design, chưa thấy cấu hình EKS audit logging được codify | **UNKNOWN / High** | Xác minh control-plane log types live, retention và truy vấn; chạy bài forensic nối AWS identity → EKS username → Kubernetes verb/resource. |
+| Danh tính cá nhân | Repo có IAM user/assume-role patterns nhưng còn admin user và cần kiểm tra shared credentials/session naming | **PARTIAL** | Mỗi người dùng identity riêng, assume-role/session có attribution; cấm tài khoản/credential dùng chung trong evidence path. |
 
 ## 5. Hai blind spot dễ hiểu sai
 
@@ -75,6 +93,8 @@ Integrity validation chứng minh log/digest sau khi delivery không bị sửa/
 - Danh sách bucket/secret/KMS key/data store thật và tag owner/data-classification.
 - S3 Object Lock bucket từ Directive 4 thuộc account nào, mode/retention/bucket policy thực tế.
 - EKS control-plane audit logging đang bật loại nào và retention bao lâu.
+- Có dựng được timeline mentor chọn từ CloudTrail + EKS audit + Git/change trail trong thời gian giới hạn hay không.
+- Mọi admin/on-call action có truy về cá nhân/session issuer hay còn shared account/credential.
 - Event volume 7 ngày, S3 bytes/tháng, chi phí CloudTrail/S3/KMS/SNS hiện tại.
 - Principal mentor và operator có/không có quyền trên organization trail/log archive.
 

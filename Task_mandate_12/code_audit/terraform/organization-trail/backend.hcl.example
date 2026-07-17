@@ -1,0 +1,6 @@
+bucket         = "<terraform-state-bucket-in-management-account>"
+key            = "mandate12/organization-trail/terraform.tfstate"
+region         = "ap-southeast-1"
+dynamodb_table = "<terraform-lock-table>"
+encrypt        = true
+

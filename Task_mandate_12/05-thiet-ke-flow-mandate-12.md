@@ -1,5 +1,7 @@
 # Thiết kế flow Mandate 12 — Audit không thể bị đánh bại
 
+> Sơ đồ dưới đây là **TARGET flow**, không phải sơ đồ as-built. As-built hiện chỉ xác nhận từ repository các thành phần TF3 production, EKS/private ops/edge, KMS EKS và External Secrets; Organization, archive và detection plane phải discovery/triển khai rồi mới đổi trạng thái.
+
 ## 1. Mục tiêu thiết kế
 
 Thiết kế audit flow cho AWS account TF3 `197826770971` sao cho:

@@ -1,0 +1,6 @@
+bucket         = "<terraform-state-bucket-in-log-archive-account>"
+key            = "mandate12/log-archive/terraform.tfstate"
+region         = "ap-southeast-1"
+dynamodb_table = "<terraform-lock-table>"
+encrypt        = true
+

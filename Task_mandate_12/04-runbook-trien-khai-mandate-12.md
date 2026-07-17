@@ -2,6 +2,8 @@
 
 > **Trạng thái:** runbook đề xuất cho TF3, chưa thực thi. Chữ “TF4” trong file mandate nguồn là lỗi đặt tên. Không chạy production trước khi change owner và delegated security admin phê duyệt ownership, resource scope và cửa sổ triển khai.
 
+Runbook dùng inventory live làm source of truth. Tên trail, bucket, KMS key, Organization ID và secret/datastore ngoài `techx-tf3/flagd-sync-token` đều là placeholder cho đến khi discovery xác nhận.
+
 ## 1. Mục tiêu và nguyên tắc an toàn
 
 Triển khai audit plane chống làm mù, làm hụt và sửa log mà không thay đổi storefront, private ops access hoặc flagd.
@@ -51,6 +53,14 @@ aws secretsmanager list-secrets --query 'SecretList[].{ARN:ARN,Name:Name,Tags:Ta
 ```
 
 Không gọi `get-secret-value` ở bước inventory.
+
+Thu thêm baseline kế thừa Mandate 4:
+
+- EKS control-plane log types và CloudWatch log group/retention thực tế;
+- đường nối IAM/STS principal → EKS access entry/username → Kubernetes audit event;
+- bằng chứng Object Lock hiện có và account/bucket owner;
+- danh sách shared account/credential cần loại bỏ khỏi đường vận hành/audit;
+- một timeline forensic cũ để kiểm tra khả năng truy vấn chéo cloud, Kubernetes và Git/change trail.
 
 ### 3.3 Classification và volume
 
@@ -173,6 +183,18 @@ aws cloudtrail validate-logs \
 
 Lặp cho region có global service event nếu cần. Kỳ vọng: summary hợp lệ, không `INVALID`, không digest/log missing. Lưu output, UTC window, CLI version và hash của evidence file.
 
+### 7.4 Bài forensic kế thừa Mandate 4
+
+Mentor chọn một thay đổi cấu hình hoặc Kubernetes action trong test window. Team phải dựng lại trong timebox đã thống nhất:
+
+1. danh tính AWS gốc và STS session/issuer;
+2. EKS username và Kubernetes verb/resource/namespace;
+3. thay đổi trước/sau hoặc Git commit/PR tương ứng nếu là GitOps change;
+4. UTC timeline và request/audit IDs;
+5. bằng chứng log/digest không bị sửa.
+
+Nếu chỉ tìm được role dùng chung mà không truy về cá nhân, hoặc thiếu nội dung thay đổi, bài forensic không đạt dù CloudTrail integrity validation pass.
+
 ## 8. Kiểm tra sau rollout
 
 ### Hằng ngày
@@ -240,3 +262,5 @@ Nếu thiết kế Compliance 365 ngày sai, ngừng ghi object mới vào bucke
 - [ ] Không có thay đổi storefront, private ops hoặc flagd.
 - [ ] Evidence pack đã redaction, hash và ký tên người chịu trách nhiệm.
 - [ ] Verdict từng test bắt buộc được ghi đúng trạng thái; chưa test live không được đánh dấu `VERIFIED`.
+- [ ] Bài forensic nối được AWS identity → EKS/Kubernetes action → Git/change trail trong timebox.
+- [ ] Không có shared account/credential trong đường evidence; mọi action quy về cá nhân/session.

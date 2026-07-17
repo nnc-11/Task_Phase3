@@ -13,6 +13,8 @@ Threat → Tiền điều kiện → Hành động → Control → Event/alert k
 
 Tài liệu không xác nhận control đã tồn tại trên AWS. Chỉ đánh dấu `VERIFIED` sau khi test live và lưu đủ evidence.
 
+Test chỉ chuyển sang `DEPLOYED` sau khi inventory live xác nhận đúng trail ARN, account boundary, event selectors, bucket/KMS owner và EKS audit status. Không dùng resource dự kiến từ Mandate 8 làm fixture nếu chưa tồn tại live.
+
 ## 2. Quy tắc an toàn và phê duyệt
 
 - Chỉ chạy sau khi change owner, security owner và mentor phê duyệt test window, principal và resource scope.
@@ -77,6 +79,7 @@ M12-ATK-<ID>/
 | ATK-12 | Rời organization/vô hiệu trusted access | Làm mù toàn bộ | Critical | Không mutate production; sandbox/tabletop + deny evidence |
 | ATK-13 | Tạo noise/cost exhaustion | Che giấu + cost | High | Mô phỏng/giới hạn sandbox |
 | ATK-14 | Tạo resource nhạy cảm mới ngoài selector | Coverage drift | High | Sandbox hoặc canary resource được duyệt |
+| ATK-15 | Kubernetes action không truy về danh tính | Làm mỏng/forensic | High | Production canary namespace/resource |
 
 ## 6. ATK-01 — StopLogging organization trail
 
@@ -424,7 +427,31 @@ Một bucket/prefix nhạy cảm mới được tạo nhưng không được th�
 - **PASS:** resource không thể âm thầm đi vào production ngoài coverage hoặc drift được phát hiện trong SLA.
 - **FAIL:** coverage phụ thuộc inventory thủ công không có reconciliation và resource mới tạo blind spot.
 
-## 20. Bảng verdict dùng khi demo
+## 20. ATK-15 — Kubernetes action và forensic identity chain
+
+### Threat
+
+Attacker hoặc operator thực hiện Kubernetes action qua EKS nhưng log chỉ hiện một role/group dùng chung, khiến team không dựng được ai-làm-gì-khi-nào và nội dung thay đổi.
+
+### Test
+
+- Mentor dùng identity cá nhân assume một role/session canary.
+- Thực hiện một Kubernetes action vô hại đã duyệt trên canary resource/namespace.
+- Team không biết trước action cụ thể và phải dựng timeline trong timebox.
+
+### Kỳ vọng
+
+- CloudTrail/STS thể hiện caller và assumed-role session.
+- EKS control-plane audit log thể hiện username, verb, resource, namespace, response và UTC time.
+- Nếu action đi qua GitOps, nối được PR/commit/Argo CD reconciliation với thay đổi.
+- Không dựa vào lời khai của tester.
+
+### Pass/Fail
+
+- **PASS:** dựng được identity chain và nội dung action từ log độc lập trong timebox.
+- **FAIL:** EKS audit chưa bật/đã hết retention, chỉ thấy shared role không truy về người, hoặc không xác định được nội dung thay đổi.
+
+## 21. Bảng verdict dùng khi demo
 
 | Test ID | UTC window | Principal | Expected event | Deny/control | Event found | Alert | Integrity | Verdict |
 |---|---|---|---|---|---|---|---|---|
@@ -434,7 +461,7 @@ Một bucket/prefix nhạy cảm mới được tạo nhưng không được th�
 | ATK-07 | | | `GetSecretValue` | N/A | | theo policy | | `DESIGNED` |
 | ATK-11 | | | validation result | WORM | | | | `DESIGNED` |
 
-## 21. Điều kiện hoàn tất Mandate 12
+## 22. Điều kiện hoàn tất Mandate 12
 
 Tối thiểu mentor phải trực tiếp chứng minh:
 
@@ -446,3 +473,4 @@ Tối thiểu mentor phải trực tiếp chứng minh:
 
 ATK-03, ATK-05, ATK-08, ATK-09, ATK-10, ATK-12, ATK-13 và ATK-14 củng cố defense-in-depth và residual-risk analysis. Nếu chưa chạy, phải ghi `DESIGNED` hoặc `BLOCKED`, không ghi `VERIFIED`.
 
+Baseline Mandate 4 còn yêu cầu ATK-15 hoặc bài forensic tương đương để chứng minh log không chỉ toàn vẹn mà còn đủ ý nghĩa và quy được về người.

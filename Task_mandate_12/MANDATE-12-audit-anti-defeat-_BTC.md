@@ -1,8 +1,8 @@
-# [DIRECTIVE #12 · chỉ TF4] Kiểm toán không thể bị đánh bại
+# [DIRECTIVE #12 · chỉ TF3] Kiểm toán không thể bị đánh bại
 
 **Từ:** Ban Kiểm toán & An ninh - TechX Corp
 **Hiệu lực:** khi nhận · hoàn tất & nộp trước **hết ngày 20/07/2026**
-**Áp dụng:** **chỉ Task Force 4** (nhóm CDO chuyên trách Auditability)
+**Áp dụng:** **chỉ Task Force 3** (nhóm CDO chuyên trách Auditability)
 
 ---
 
@@ -15,7 +15,7 @@
 Bài này bắt các bạn **bịt cả ba** và chứng minh audit trail **đủ và toàn vẹn về mật mã**, không phải "append-only" nói suông.
 
 ## Yêu cầu
-1. **Không có cửa sổ mù.** Không ai - kể cả admin của chính TF4 - **tắt/dừng được đường ghi log mà không bị chặn hoặc không để lại vết báo động**. Chứng minh bằng thiết kế: đường ghi log nằm ngoài tầm với của người vận hành (ví dụ trail ở phạm vi tổ chức / chặn quyền StopLogging bằng SCP), và bản thân lệnh tắt cũng là một sự kiện được ghi + kêu.
+1. **Không có cửa sổ mù.** Không ai - kể cả admin của chính TF3 - **tắt/dừng được đường ghi log mà không bị chặn hoặc không để lại vết báo động**. Chứng minh bằng thiết kế: đường ghi log nằm ngoài tầm với của người vận hành (ví dụ trail ở phạm vi tổ chức / chặn quyền StopLogging bằng SCP), và bản thân lệnh tắt cũng là một sự kiện được ghi + kêu.
 2. **Log đúng thứ cần - đóng coverage gap.** Hành động **đọc dữ liệu nhạy cảm** (object trong S3, secret) và **thay đổi cấu hình quan trọng** phải để lại vết, không chỉ các sự kiện quản trị (management events). Chỉ rõ: nếu kẻ tấn công đọc trộm secret hoặc kéo cả bucket, các bạn **có vết để biết không**.
 3. **Chứng minh log toàn vẹn + đủ về mật mã.** Không phải "log của chúng em append-only" mà là bằng chứng kỹ thuật: chuỗi digest ký số / cơ chế xác minh (ví dụ CloudTrail log file integrity validation) chứng minh **không một sự kiện nào bị thêm, xóa hay sửa lén**, và không có khoảng trống bị nuốt.
 4. **Giữ đủ lâu.** Thời gian lưu trữ đủ để điều tra một cuộc tấn công **kéo dài** - kẻ có thể ở trong hệ nhiều ngày trước khi lộ. Nêu rõ retention và vì sao đủ.
@@ -33,4 +33,4 @@ Cho mentor **tự thử đánh bại**, không nghe khai - ba đòn:
 ## Được nhìn ở trụ nào
 Chính là **Auditability** (độ tin cậy của bản ghi: không mù, không hụt, không sửa được, giữ đủ lâu) và **Security** (chống lại chính đòn nhắm vào hệ kiểm toán). Chạm **Operational Excellence** (kỷ luật cấu hình log).
 
-> Directive riêng cho team Audit TF4, nối tiếp #4. Ở #4 các bạn chứng minh **log không xóa được**; ở đây chứng minh **kẻ tấn công không thể làm hệ kiểm toán của các bạn mù, hụt hay giả** - và bản ghi đứng vững như bằng chứng.
+> Directive riêng cho team Audit TF3, nối tiếp #3. Ở #3 các bạn chứng minh **log không xóa được**; ở đây chứng minh **kẻ tấn công không thể làm hệ kiểm toán của các bạn mù, hụt hay giả** - và bản ghi đứng vững như bằng chứng.
