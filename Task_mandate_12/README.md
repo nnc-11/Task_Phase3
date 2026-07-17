@@ -7,9 +7,9 @@ Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Dự 
 1. [m12-gap-v1.4.md](m12-gap-v1.4.md) — yêu cầu, hiện trạng và gap.
 2. [m12-coverage-v1.0.md](m12-coverage-v1.0.md) — matrix bắt buộc cho toàn bộ dữ liệu nhạy cảm và config control.
 3. [m12-iam-scope-v1.0.md](m12-iam-scope-v1.0.md) — inventory daily-admin/CI, migration và residual-risk acceptance.
-4. [m12-solution-v1.6.md](m12-solution-v1.6.md) — solution, thiết kế và giới hạn claim single-account.
+4. [m12-solution-v1.7.md](m12-solution-v1.7.md) — solution, thiết kế và giới hạn claim single-account.
 5. [m12-runbook-v1.5.md](m12-runbook-v1.5.md) — kế hoạch, gate và runbook.
-6. [m12-tests-v1.5.md](m12-tests-v1.5.md) — kịch bản kiểm thử và evidence.
+6. [m12-tests-v1.6.md](m12-tests-v1.6.md) — kịch bản kiểm thử và evidence.
 
 ## Tài liệu nguồn
 
@@ -26,6 +26,6 @@ Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Dự 
 
 ---
 
-**Phiên bản:** v1.6  
+**Phiên bản:** v1.7  
 **Cập nhật:** 18/07/2026  
 **Trạng thái:** READY FOR REVIEW — deployment blocked pending gates

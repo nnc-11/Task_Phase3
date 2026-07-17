@@ -129,7 +129,7 @@ IAM identity
 
 ## 11. M12-T08 — Tamper alert plane
 
-Trước test, lấy **cả** `terraform output -json anti_audit_rule_arns` và `terraform output -json global_anti_audit_rule_arns`, rồi lập map: **mỗi primary/global rule output → API deny có service-specific event source → target SNS expected**. Không hard-code số rule; rule mới thêm vào foundation cũng phải thêm một hàng test.
+Trước test, lấy **cả** `terraform output -json anti_audit_rule_arns` và `terraform output -json global_anti_audit_rule_arns`, rồi lập map: **mỗi primary/global rule output → API deny có service-specific event source → target SNS expected**. Foundation hiện tại có đúng 12 rule (7 primary + 5 global) và audit-access bắt buộc nhận đủ 12 ARN. Nếu bổ sung rule, phải cập nhật foundation, validation audit-access và test map trong cùng một change được duyệt; không tự bỏ qua rule mới.
 
 Ví dụ nhóm action cần có trong map: `events:DisableRule`/remove target cho EventBridge, và mutation SNS topic/subscription cho SNS. Tất cả phải nhắm vào control audit thật nhưng được thực hiện từ bounded test identity sau simulation; nếu request không bị deny là Critical incident.
 
@@ -227,6 +227,6 @@ Discovery xác nhận có hai secret production (`sosflow/db-password`, `techx-c
 
 ---
 
-**Phiên bản:** v1.5  
+**Phiên bản:** v1.6  
 **Cập nhật:** 18/07/2026  
 **Trạng thái:** READY FOR REVIEW — test blocked pending foundation and IAM gates

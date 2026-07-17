@@ -34,7 +34,6 @@ flowchart TB
     S3["Audit S3\nVersioning + Object Lock\nCOMPLIANCE 365 ngày"]
     DIGEST["Signed digest chain"]
 
-    ROOT -. emergency custody .-> BREAKGLASS
     AUDITADMIN -. read only .-> CT
     BREAKGLASS -. narrow recovery .-> CT
     OPERATOR --> API
@@ -51,7 +50,7 @@ flowchart TB
 
 | Identity | Quyền |
 |---|---|
-| Root user | Break-glass; MFA; không access key; không chia sẻ |
+| Root user | Residual emergency custodian; MFA; không access key; không chia sẻ; **không** nằm trong trust policy audit-admin/break-glass |
 | Audit-admin | Read-only trail/digest/log/evidence; session quy về cá nhân; không phải recovery admin |
 | Break-glass recovery | Chỉ `StartLogging`/`EnableRule` khi incident được duyệt; delete/recreate trail/topic/bucket phải qua root custodian và Terraform recovery change riêng |
 | Operator/apply role | Vận hành production nhưng không được mutate trail, archive, alert và boundary bảo vệ |
@@ -228,6 +227,6 @@ Chỉ sau PR IAM riêng (bounded operator, audit-admin/break-glass design), test
 
 ---
 
-**Phiên bản:** v1.6  
+**Phiên bản:** v1.7  
 **Cập nhật:** 18/07/2026  
 **Trạng thái:** READY FOR REVIEW — foundation deployment blocked pending gates

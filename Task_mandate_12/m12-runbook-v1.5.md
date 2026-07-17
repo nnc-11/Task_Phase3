@@ -140,7 +140,7 @@ Tối thiểu:
 - với IAM/global-service event, kiểm tra evidence ở `ap-southeast-1` và `us-east-1`, hoặc giữ IAM alert ở trạng thái `VERIFY-LIVE`;
 - dựng một forensic timeline cloud/Kubernetes/Git nếu action liên quan EKS.
 
-Chi tiết nằm trong file [m12-tests-v1.5.md](m12-tests-v1.5.md).
+Chi tiết nằm trong file [m12-tests-v1.6.md](m12-tests-v1.6.md).
 
 ## 7. Vận hành sau triển khai
 

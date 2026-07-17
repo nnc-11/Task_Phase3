@@ -574,7 +574,7 @@ Archive log copy vẫn là evidence chính. `lookup-events` chỉ hỗ trợ đ�
 
 ### 8.4 Evidence và verdict cuối
 
-Theo [m12-tests-v1.5.md](../m12-tests-v1.5.md), tạo một thư mục evidence cho mỗi T01–T11 gồm UTC window, approver, observer, principal/session, command redacted, log/digest result, EventBridge/SNS/region evidence và verdict.
+Theo [m12-tests-v1.6.md](../m12-tests-v1.6.md), tạo một thư mục evidence cho mỗi T01–T11 gồm UTC window, approver, observer, principal/session, command redacted, log/digest result, EventBridge/SNS/region evidence và verdict.
 
 Chỉ đánh dấu Mandate 12 `VERIFIED` khi T01–T11 pass, `validate-logs` không có `INVALID`/missing digest, Object Lock retention 365 ngày có evidence, coverage matrix không còn asset nhạy cảm `Unknown`, IAM scope/attachment mapping hoàn chỉnh, root residual acceptance đã ký, và không có ảnh hưởng storefront/private ops/flagd. Claim phải ghi rõ giới hạn single-account: root/break-glass và continuity của toàn bộ same-account alert plane là residual risk, không phải “đã bị chặn tuyệt đối”.
 
