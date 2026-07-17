@@ -7,6 +7,7 @@
 - Không sửa repository production trong giai đoạn discovery.
 - Không dùng root user để deploy.
 - Mọi plan/apply qua identity cá nhân assume-role và saved plan.
+- Chỉ dùng IAM user/role trong account Free Tier `197826770971`; không có bước Organizations, SCP hoặc cross-account.
 - Audit foundation và IAM hardening là hai change riêng.
 - Không dùng secret thật hoặc object thật cho mentor demo.
 - Không đánh dấu `VERIFIED` chỉ vì apply thành công.
@@ -201,6 +202,6 @@ AWS CLI đã đủ để loại bỏ giả định sai về trail/Object Lock, n
 
 ---
 
-**Phiên bản:** v1.2  
+**Phiên bản:** v1.3  
 **Cập nhật:** 17/07/2026  
 **Trạng thái:** READY FOR PREPARATION — chưa được phép apply

@@ -4,7 +4,7 @@
 
 ## 1. Quyết định
 
-Chọn triển khai Mandate 12 trong AWS account TF3 hiện tại:
+Chọn triển khai Mandate 12 trong **một AWS account Free Tier TF3** hiện tại (`197826770971`). “Sub account” trong team là IAM user/role cùng account:
 
 - account-level CloudTrail multi-region;
 - management events read/write;
@@ -15,7 +15,7 @@ Chọn triển khai Mandate 12 trong AWS account TF3 hiện tại:
 - audit-admin role tách operator role;
 - permissions boundary cho operator sau khi kiểm tra workflow hiện tại.
 
-AWS Organizations/cross-account archive là phương án nâng cấp, không chọn cho lần triển khai này vì chưa xác nhận hạ tầng/account boundary tương ứng.
+AWS Organizations/cross-account archive chỉ là phương án tham khảo, **không chọn và không thuộc scope** lần triển khai này. Thiết kế không dùng SCP hay giả định có management/member account.
 
 Live discovery ngày 17/07/2026 xác nhận account hiện **không có CloudTrail trail và không có Object Lock bucket**. Mandate 12 vì vậy tạo mới audit foundation từ product hiện tại; EKS audit log 90 ngày là control live duy nhất được giữ lại cho forensic timeline.
 
@@ -162,7 +162,7 @@ Thay đổi account-level:
 |---|---|---|
 | Single-account alert-only | Nhanh nhưng admin có thể tự sửa control | Chỉ bootstrap |
 | Single-account + bounded operator | Bám dự án hiện tại, không cần account mới; cần migration IAM cẩn thận | **Chọn** |
-| Organization trail | Ranh giới mạnh nhất nhưng cần hạ tầng/account chưa xác nhận | Nâng cấp tương lai |
+| Organization trail/cross-account archive | Ranh giới mạnh hơn nhưng cần nhiều account/Organizations | Không thuộc scope account Free Tier đơn lẻ |
 | CloudTrail Lake/Insights | Query tốt, thêm chi phí, không thay digest/WORM | Không chọn MVP |
 
 ## 11. Cost
@@ -200,6 +200,6 @@ Chưa chốt tên bucket, selector S3, KMS key hay SNS subscriber từ static re
 
 ---
 
-**Phiên bản:** v1.2  
+**Phiên bản:** v1.3  
 **Cập nhật:** 17/07/2026  
 **Trạng thái:** READY FOR PREPARATION — chưa được phép apply

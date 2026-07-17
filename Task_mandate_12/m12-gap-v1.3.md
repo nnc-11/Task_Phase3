@@ -65,7 +65,7 @@ Mọi CloudTrail, Object Lock, KMS hoặc audit resource đều phải được 
 | S3 Object Lock hiện có | `CONFIRMED-LIVE: absent` | Kiểm tra 7 bucket trong account: không bucket nào có Object Lock configuration |
 | EKS control-plane audit logging | `CONFIRMED-LIVE: enabled` | `api`, `audit`, `authenticator` bật; `controllerManager`, `scheduler` tắt |
 | EKS audit retention | `CONFIRMED-LIVE` | Log group `/aws/eks/techx-corp-tf3/cluster`, retention 90 ngày, ~1.47 GB; không gắn CMK riêng |
-| AWS Organizations/member account | `VERIFY-LIVE` | Không dùng làm tiền đề cho phương án chọn |
+| AWS Organizations/member account | `OUT OF SCOPE` | Account Free Tier đơn lẻ; không dùng Organization/SCP/cross-account archive |
 | Datastore/secret Mandate 8 | `CONFIRMED-LIVE: partial` | Có `sosflow/db-password`; chỉ đưa resource khác vào coverage khi tồn tại live |
 
 ## 6. Gap analysis
@@ -151,8 +151,15 @@ Discovery chỉ đọc được chạy lại bằng `arn:aws:iam::197826770971:u
 
 Kết quả giữ nguyên quyết định: tạo audit foundation mới, chỉ chọn S3 data-event scope sau khi owner phê duyệt bucket/prefix; tách IAM hardening khỏi change foundation.
 
+### Mô hình account đã xác nhận
+
+- TF3 vận hành trong **một AWS account Free Tier**: `197826770971`.
+- “Sub account” của team là IAM user hoặc IAM role trong chính account này; không phải AWS member account.
+- AWS Organizations, management account, cross-account archive và SCP **không thuộc scope** của Mandate 12 hiện tại.
+- Control được triển khai bằng CloudTrail account-level, audit S3 bucket, IAM role/policy/boundary và EventBridge/SNS trong cùng account.
+
 ---
 
-**Phiên bản:** v1.2  
+**Phiên bản:** v1.3  
 **Cập nhật:** 17/07/2026  
 **Trạng thái:** READY FOR PREPARATION — chưa được phép apply

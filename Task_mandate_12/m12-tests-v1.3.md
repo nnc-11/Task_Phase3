@@ -10,6 +10,7 @@
 - Không chạy `StopLogging` nếu operator chưa được xác nhận bounded; dùng IAM simulation trước.
 - Nếu lệnh tắt trail thành công ngoài dự kiến: dừng toàn bộ test và mở Critical incident.
 - Không bật CLI debug hoặc lưu `SecretString`.
+- Tester, operator và audit-admin là IAM identities trong cùng account Free Tier; không kiểm thử Organizations/SCP/cross-account.
 
 ## 2. Trạng thái
 
@@ -178,6 +179,6 @@ Discovery xác nhận có hai secret production (`sosflow/db-password`, `techx-c
 
 ---
 
-**Phiên bản:** v1.2  
+**Phiên bản:** v1.3  
 **Cập nhật:** 17/07/2026  
 **Trạng thái:** READY FOR PREPARATION — chưa được phép apply

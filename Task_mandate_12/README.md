@@ -1,13 +1,13 @@
 # Mandate 12 — Audit không thể bị đánh bại
 
-Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Repository production chỉ được đọc; chưa có thay đổi hay triển khai nào vào production.
+Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Dự án dùng một AWS account Free Tier; “sub account” là IAM user/role trong cùng account, không phải AWS Organizations. Repository production chỉ được đọc; chưa có thay đổi hay triển khai nào vào production.
 
 ## Bộ tài liệu hiện hành
 
-1. [m12-gap-v1.2.md](m12-gap-v1.2.md) — yêu cầu, hiện trạng và gap.
-2. [m12-solution-v1.2.md](m12-solution-v1.2.md) — solution được đề xuất và thiết kế.
-3. [m12-runbook-v1.2.md](m12-runbook-v1.2.md) — kế hoạch, gate và runbook.
-4. [m12-tests-v1.2.md](m12-tests-v1.2.md) — kịch bản kiểm thử và evidence.
+1. [m12-gap-v1.3.md](m12-gap-v1.3.md) — yêu cầu, hiện trạng và gap.
+2. [m12-solution-v1.3.md](m12-solution-v1.3.md) — solution được đề xuất và thiết kế.
+3. [m12-runbook-v1.3.md](m12-runbook-v1.3.md) — kế hoạch, gate và runbook.
+4. [m12-tests-v1.3.md](m12-tests-v1.3.md) — kịch bản kiểm thử và evidence.
 
 ## Tài liệu nguồn
 
@@ -24,6 +24,6 @@ Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Repos
 
 ---
 
-**Phiên bản:** v1.2  
+**Phiên bản:** v1.3  
 **Cập nhật:** 17/07/2026  
 **Trạng thái:** READY FOR PREPARATION — chưa được phép apply
