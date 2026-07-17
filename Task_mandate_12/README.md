@@ -5,7 +5,7 @@ Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Dự 
 ## Bộ tài liệu hiện hành
 
 1. [m12-gap-v1.3.md](m12-gap-v1.3.md) — yêu cầu, hiện trạng và gap.
-2. [m12-solution-v1.3.md](m12-solution-v1.3.md) — solution được đề xuất và thiết kế.
+2. [m12-solution-v1.4.md](m12-solution-v1.4.md) — solution được đề xuất và thiết kế.
 3. [m12-runbook-v1.3.md](m12-runbook-v1.3.md) — kế hoạch, gate và runbook.
 4. [m12-tests-v1.3.md](m12-tests-v1.3.md) — kịch bản kiểm thử và evidence.
 
@@ -24,6 +24,6 @@ Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Dự 
 
 ---
 
-**Phiên bản:** v1.3  
+**Phiên bản:** v1.4  
 **Cập nhật:** 17/07/2026  
 **Trạng thái:** READY FOR PREPARATION — chưa được phép apply

@@ -67,7 +67,7 @@ sequenceDiagram
     participant API as AWS API
     participant CT as CloudTrail
     participant S3 as Audit S3 WORM
-    participant Alert as EventBridge/SNS
+    participant Alert as EventBridge and SNS
 
     Actor->>API: API call
     API-->>CT: management/data event
@@ -200,6 +200,6 @@ Chưa chốt tên bucket, selector S3, KMS key hay SNS subscriber từ static re
 
 ---
 
-**Phiên bản:** v1.3  
+**Phiên bản:** v1.4  
 **Cập nhật:** 17/07/2026  
 **Trạng thái:** READY FOR PREPARATION — chưa được phép apply
