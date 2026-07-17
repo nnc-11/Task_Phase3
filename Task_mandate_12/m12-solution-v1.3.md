@@ -60,7 +60,7 @@ flowchart TB
 Root vẫn là trust anchor cuối cùng. Vì thế solution không tuyên bố chống account root tuyệt đối; nó chứng minh operator/admin dùng hằng ngày bị chặn và mọi attempt bị cảnh báo. Residual risk được giảm bằng MFA, không root access key, không dùng chung root và break-glass procedure.
 
 ## 4. Flow ghi log
-
+  
 ```mermaid
 sequenceDiagram
     participant Actor as User/Role/Service

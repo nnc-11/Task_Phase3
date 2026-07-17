@@ -123,6 +123,11 @@ Kết luận discovery: Mandate 12 không thể tái sử dụng audit trail/Obj
 
 Repository có nền IaC, private access, KMS và identity flows tốt để triển khai audit độc lập. Tuy nhiên Mandate 12 hiện là **Not Ready/VERIFY-LIVE** vì chưa chứng minh trail, coverage, integrity, retention và operator boundary. Solution phải bắt đầu bằng discovery, sau đó dựng single-account audit foundation và IAM hardening thành hai change riêng.
 
+**Giải thích mục 9:**  
+**1.**Nên chia làm 2 giai đoạn sau:    
+Audit foundation: tạo CloudTrail, audit S3 bucket có Object Lock 365 ngày, log integrity validation, alert. Mục tiêu: bắt đầu có log đầy đủ và không dễ bị xóa.  
+**2.**IAM hardening: giảm/tách quyền của user/role vận hành để họ không thể tắt CloudTrail, xóa log hoặc tắt alert. Mục tiêu: chống “người có quyền admin” làm mù audit. 
+
 ## 10. Kết luận static readiness
 
 **Đủ để lập bốn tài liệu và bắt đầu chuẩn bị deployment; chưa đủ để apply.** Static review xác nhận đúng account/region mục tiêu (`ap-southeast-1`), Terraform root production (`infra/live/production`), backend S3 và các workload nhạy cảm cần coverage (EKS, Secrets Manager, Terraform state).
