@@ -60,21 +60,21 @@ flowchart TB
 Root vẫn là trust anchor cuối cùng. Vì thế solution không tuyên bố chống account root tuyệt đối; nó chứng minh operator/admin dùng hằng ngày bị chặn và mọi attempt bị cảnh báo. Residual risk được giảm bằng MFA, không root access key, không dùng chung root và break-glass procedure.
 
 ## 4. Flow ghi log
-  
+
 ```mermaid
 sequenceDiagram
-    participant Actor as User/Role/Service
+    participant Caller as User/Role/Service
     participant API as AWS API
     participant CT as CloudTrail
-    participant S3 as Audit S3 WORM
-    participant Alert as EventBridge and SNS
+    participant S3Log as Audit S3 WORM
+    participant Alert as EventBridge và SNS
 
-    Actor->>API: API call
-    API-->>CT: management/data event
-    API-->>Alert: anti-audit event nếu khớp
-    CT->>S3: log file
-    CT->>S3: signed digest
-    Alert-->>Actor: security owner nhận cảnh báo độc lập
+    Caller->>API: API call
+    API-->>CT: Management/Data event
+    API-->>Alert: Anti-audit event nếu khớp
+    CT->>S3Log: Log file
+    CT->>S3Log: Signed digest
+    Alert-->>Caller: Security owner nhận cảnh báo độc lập
 ```
 
 ## 5. Không có cửa sổ mù
