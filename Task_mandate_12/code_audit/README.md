@@ -2,6 +2,8 @@
 
 Mã trong thư mục này **không nằm trong repository production và chưa được deploy**. Chỉ copy sau khi live discovery xác nhận AWS Organizations, account ownership, backend và resource scope.
 
+> **TẠM DỪNG DEPLOY:** scaffold Terraform hiện có là phương án Organization/cross-account, nhưng solution mới đã chọn single-account hardened audit. Không dùng hai root hiện tại để deploy. Chúng chỉ là phương án tham khảo cho nâng cấp tương lai; mã single-account sẽ được chốt sau khi thảo luận IAM/operator boundary và live discovery.
+
 ## Cấu trúc
 
 ```text

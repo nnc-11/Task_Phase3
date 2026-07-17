@@ -1,0 +1,182 @@
+# Mandate 12 — Solution và thiết kế
+
+> **Trạng thái:** Draft for approval · phương án chọn: single-account hardened audit.
+
+## 1. Quyết định
+
+Chọn triển khai Mandate 12 trong AWS account TF3 hiện tại:
+
+- account-level CloudTrail multi-region;
+- management events read/write;
+- S3 data events có scope;
+- S3 audit bucket riêng có Versioning + Object Lock Compliance 365 ngày;
+- log file integrity validation;
+- EventBridge/SNS cảnh báo anti-audit;
+- audit-admin role tách operator role;
+- permissions boundary cho operator sau khi kiểm tra workflow hiện tại.
+
+AWS Organizations/cross-account archive là phương án nâng cấp, không chọn cho lần triển khai này vì chưa xác nhận hạ tầng/account boundary tương ứng.
+
+## 2. Kiến trúc mục tiêu
+
+```mermaid
+flowchart TB
+    ROOT["Root user\nMFA · no access key\nbreak-glass only"]
+    AUDITADMIN["Audit-admin role\nidentity cá nhân · reviewed change"]
+    OPERATOR["Operator/apply roles\npermissions boundary"]
+    API["AWS APIs của TF3"]
+    CT["CloudTrail multi-region\nmanagement read/write\nS3 data events"]
+    EB["EventBridge anti-audit"]
+    SNS["SNS → mentor/security owner"]
+    S3["Audit S3\nVersioning + Object Lock\nCOMPLIANCE 365 ngày"]
+    DIGEST["Signed digest chain"]
+
+    ROOT -. emergency only .-> AUDITADMIN
+    AUDITADMIN --> CT
+    OPERATOR --> API
+    OPERATOR -. deny audit mutation .-> CT
+    API --> CT
+    API --> EB
+    EB --> SNS
+    CT --> S3
+    CT --> DIGEST
+    DIGEST --> S3
+```
+
+## 3. Trust model
+
+| Identity | Quyền |
+|---|---|
+| Root user | Break-glass; MFA; không access key; không chia sẻ |
+| Audit-admin | Quản trị audit qua change được review; session quy về cá nhân |
+| Operator/apply role | Vận hành production nhưng không được mutate trail, archive, alert và boundary bảo vệ |
+| Mentor/tester | Chỉ canary actions và denied anti-audit tests |
+| Auditor | Read-only status/log/digest/evidence cần thiết |
+
+### Giới hạn single-account
+
+Root vẫn là trust anchor cuối cùng. Vì thế solution không tuyên bố chống account root tuyệt đối; nó chứng minh operator/admin dùng hằng ngày bị chặn và mọi attempt bị cảnh báo. Residual risk được giảm bằng MFA, không root access key, không dùng chung root và break-glass procedure.
+
+## 4. Flow ghi log
+
+```mermaid
+sequenceDiagram
+    participant Actor as User/Role/Service
+    participant API as AWS API
+    participant CT as CloudTrail
+    participant S3 as Audit S3 WORM
+    participant Alert as EventBridge/SNS
+
+    Actor->>API: API call
+    API-->>CT: management/data event
+    API-->>Alert: anti-audit event nếu khớp
+    CT->>S3: log file
+    CT->>S3: signed digest
+    Alert-->>Actor: security owner nhận cảnh báo độc lập
+```
+
+## 5. Không có cửa sổ mù
+
+### Control
+
+- EventBridge bắt `StopLogging`, `DeleteTrail`, `UpdateTrail`, `PutEventSelectors`.
+- Operator boundary loại quyền mutate CloudTrail/audit bucket/alert controls.
+- Audit-admin tách biệt, MFA/session attribution.
+- Object Lock bảo vệ log đã delivery.
+
+### Hai giai đoạn
+
+1. **Audit foundation:** trail, bucket, validation, selectors và alert. Khi apply role còn admin, trạng thái chỉ `PARTIAL`.
+2. **IAM hardening:** tạo/test bounded operator role, chuyển workflow từng bước, rồi mới loại quyền admin trực tiếp. Sau bước này mới chạy mentor deny test.
+
+Không gộp hai giai đoạn thành một apply vì IAM migration có thể ảnh hưởng CI/CD và emergency access.
+
+## 6. Coverage
+
+### Management events
+
+- All regions, global service events.
+- Read và write.
+- CloudTrail, IAM/STS, S3 configuration, EKS, Secrets Manager, EC2/VPC, CloudFront/WAF.
+- Managed datastore chỉ khi tồn tại live.
+
+### S3 data events
+
+Advanced selector cho ARN prefix nhạy cảm đã được duyệt:
+
+```text
+eventCategory = Data
+resources.type = AWS::S3::Object
+resources.ARN startsWith arn:aws:s3:::<bucket>/<prefix>/
+```
+
+Khi attacker kéo nhiều object, team có chuỗi `GetObject` để dựng actor/time/resource. Không bật mọi bucket trước cost baseline.
+
+### Secrets Manager
+
+Management read events ghi `GetSecretValue` và `BatchGetSecretValue`. Log không chứa `SecretString`. Demo dùng canary secret vô giá trị, không dùng `techx-tf3/flagd-sync-token` thật.
+
+## 7. Integrity và retention
+
+- CloudTrail log file integrity validation.
+- Digest SHA-256 có chữ ký và liên kết digest trước.
+- `validate-logs` theo UTC window đã có digest.
+- S3 Versioning + Object Lock `COMPLIANCE` 365 ngày.
+- Lifecycle tiering không xóa/rút ngắn retain-until.
+- Ưu tiên S3-managed encryption/SSE-S3 cho MVP để tránh thêm CMK destructive path; dùng CMK chỉ khi có yêu cầu riêng.
+
+## 8. Cảnh báo
+
+| Nhóm | Event cần cảnh báo |
+|---|---|
+| CloudTrail | `StopLogging`, `DeleteTrail`, `UpdateTrail`, `PutEventSelectors` |
+| Audit S3 | đổi bucket policy, lifecycle, encryption, Object Lock |
+| Alert plane | disable/delete EventBridge rule/target, SNS topic/subscription |
+| IAM | detach/sửa boundary, role hoặc policy bảo vệ audit |
+| KMS | disable/schedule deletion/policy change nếu dùng CMK |
+
+Alert destination phải được xác nhận trước mentor demo.
+
+## 9. Phạm vi ảnh hưởng
+
+Không thay đổi:
+
+- EKS workload/Helm;
+- network, CloudFront, Cloudflare, SSM;
+- application source/image pipeline;
+- datastore;
+- flagd.
+
+Thay đổi account-level:
+
+- CloudTrail;
+- audit S3;
+- EventBridge/SNS;
+- IAM roles/boundary trong change riêng.
+
+## 10. Trade-off
+
+| Phương án | Đánh giá | Quyết định |
+|---|---|---|
+| Single-account alert-only | Nhanh nhưng admin có thể tự sửa control | Chỉ bootstrap |
+| Single-account + bounded operator | Bám dự án hiện tại, không cần account mới; cần migration IAM cẩn thận | **Chọn** |
+| Organization trail | Ranh giới mạnh nhất nhưng cần hạ tầng/account chưa xác nhận | Nâng cấp tương lai |
+| CloudTrail Lake/Insights | Query tốt, thêm chi phí, không thay digest/WORM | Không chọn MVP |
+
+## 11. Cost
+
+- Không bật Lake/Insights.
+- Dùng S3 archive làm source of truth.
+- EventBridge trực tiếp cho alert nhanh.
+- Scope S3 data events theo resource nhạy cảm.
+- Đo volume và đặt budget alarm trước khi mở rộng coverage.
+
+## 12. Tiêu chí phê duyệt solution
+
+- Chấp nhận single-account và residual risk root/break-glass.
+- Chấp nhận hai change độc lập: audit foundation và IAM hardening.
+- Xác nhận retention 365 ngày.
+- Xác nhận bucket/prefix nhạy cảm và security alert owner.
+- Cho phép live discovery chỉ đọc trước plan.
+- Không cho phép apply nếu plan có change/delete workload, edge, network, datastore hoặc flagd.
+

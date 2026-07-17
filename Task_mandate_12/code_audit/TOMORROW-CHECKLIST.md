@@ -1,5 +1,7 @@
 # Checklist triển khai ngày mai
 
+> **BLOCKED / SUPERSEDED:** checklist này thuộc phương án Organization/cross-account. Không dùng để triển khai cho solution single-account đang được chọn và thảo luận.
+
 ## A. Trước cửa sổ triển khai — GO/NO-GO
 
 - [ ] Có change ticket, approver, executor, observer và UTC window.
@@ -54,4 +56,3 @@
 - `VERIFIED`: mentor tests + integrity validation + evidence pass.
 - Nếu chỉ apply thành công nhưng digest chưa đến: giữ `DEPLOYED`, không báo hoàn tất.
 - Nếu bất kỳ lệnh tắt trail nào thành công ngoài dự kiến: dừng test, mở Critical incident và khôi phục qua organization owner.
-

@@ -2,6 +2,8 @@
 
 > Đây là hướng dẫn có gate, không phải lệnh đã chạy. Chỉ thực hiện sau change approval. Luôn dùng account/role riêng cho từng root và kiểm tra `aws sts get-caller-identity` trước mọi plan/apply.
 
+> **KHÔNG THỰC HIỆN HƯỚNG DẪN NÀY Ở TRẠNG THÁI HIỆN TẠI.** Nội dung bên dưới dành cho phương án Organization/cross-account, hiện chỉ là alternative và không phải solution được chọn cho TF3 single-account.
+
 Trình tự thao tác nhanh nằm ở `TOMORROW-CHECKLIST.md`; tài liệu này giải thích chi tiết. Organization trail có thể cần thời gian để xuất hiện/delivery ở mọi member account/region, nên `apply` thành công không đồng nghĩa Mandate đã `VERIFIED` trong cùng phút.
 
 ## 1. Điều kiện đầu vào
