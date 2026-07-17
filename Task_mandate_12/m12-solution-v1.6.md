@@ -1,6 +1,6 @@
 # Mandate 12 — Solution và thiết kế
 
-> **Trạng thái:** READY FOR PREPARATION · phương án chọn: single-account hardened audit; chưa được phép apply.
+> **Trạng thái:** READY FOR REVIEW · foundation và IAM deployment bị block bởi mandatory gates; chưa được phép apply.
 
 ## 1. Quyết định
 
@@ -24,17 +24,19 @@ Live discovery ngày 17/07/2026 xác nhận account hiện **không có CloudTra
 ```mermaid
 flowchart TB
     ROOT["Root user\nMFA · no access key\nbreak-glass only"]
-    AUDITADMIN["Audit-admin role\nidentity cá nhân · reviewed change"]
+    AUDITADMIN["Audit-admin role\nread-only evidence"]
+    BREAKGLASS["Break-glass recovery\nStartLogging / EnableRule only"]
     OPERATOR["Operator/apply roles\npermissions boundary"]
     API["AWS APIs của TF3"]
     CT["CloudTrail multi-region\nmanagement read/write\nS3 data events"]
-    EB["EventBridge anti-audit"]
-    SNS["SNS → mentor/security owner"]
+    EB["EventBridge anti-audit\nprimary + global regions"]
+    SNS["Two SNS topics\n→ mentor/security owner"]
     S3["Audit S3\nVersioning + Object Lock\nCOMPLIANCE 365 ngày"]
     DIGEST["Signed digest chain"]
 
-    ROOT -. emergency only .-> AUDITADMIN
-    AUDITADMIN --> CT
+    ROOT -. emergency custody .-> BREAKGLASS
+    AUDITADMIN -. read only .-> CT
+    BREAKGLASS -. narrow recovery .-> CT
     OPERATOR --> API
     OPERATOR -. deny audit mutation .-> CT
     API --> CT
@@ -50,14 +52,19 @@ flowchart TB
 | Identity | Quyền |
 |---|---|
 | Root user | Break-glass; MFA; không access key; không chia sẻ |
-| Audit-admin | Quản trị audit qua change được review; session quy về cá nhân |
+| Audit-admin | Read-only trail/digest/log/evidence; session quy về cá nhân; không phải recovery admin |
+| Break-glass recovery | Chỉ `StartLogging`/`EnableRule` khi incident được duyệt; delete/recreate trail/topic/bucket phải qua root custodian và Terraform recovery change riêng |
 | Operator/apply role | Vận hành production nhưng không được mutate trail, archive, alert và boundary bảo vệ |
 | Mentor/tester | Chỉ canary actions và denied anti-audit tests |
 | Auditor | Read-only status/log/digest/evidence cần thiết |
 
+### Phạm vi identity bắt buộc
+
+Trước khi hardening, phải hoàn tất [m12-iam-scope-v1.0.md](m12-iam-scope-v1.0.md): inventory từng human/CI/service role có effective admin hoặc đường privilege-escalation, mapping workflow/owner/rollback và acceptance cho mọi exception. Không được gọi một operator là “bounded” nếu vẫn còn daily-admin identity chưa phân loại.
+
 ### Giới hạn single-account
 
-Root vẫn là trust anchor cuối cùng. Vì thế solution không tuyên bố chống account root tuyệt đối; nó chứng minh operator/admin dùng hằng ngày bị chặn và mọi attempt bị cảnh báo. Residual risk được giảm bằng MFA, không root access key, không dùng chung root và break-glass procedure.
+Root vẫn là trust anchor cuối cùng. Vì thế solution không tuyên bố chống account root tuyệt đối; nó chỉ chứng minh những daily operator/CI đã có trong inventory, đã harden và đã test thì bị chặn/có evidence. Root và break-glass là residual risk phải có MFA, không root access key, custody riêng, procedure và acceptance bằng văn bản; audit-admin là read-only evidence role. Account-local EventBridge/SNS cũng không là bảo đảm liên tục nếu root/break-glass thay đổi toàn bộ alert plane; continuity chỉ được chứng minh trong test window và được vận hành theo health checks.
 
 ## 4. Flow ghi log
 
@@ -67,24 +74,26 @@ sequenceDiagram
     participant API as AWS API
     participant CT as CloudTrail
     participant S3Log as Audit S3 WORM
-    participant Alert as EventBridge và SNS
+    participant Alert as EventBridge and SNS
+    participant SecurityOwner as Security owner
 
     Caller->>API: API call
     API-->>CT: Management/Data event
     API-->>Alert: Anti-audit event nếu khớp
     CT->>S3Log: Log file
     CT->>S3Log: Signed digest
-    Alert-->>Caller: Security owner nhận cảnh báo độc lập
+    Alert-->>SecurityOwner: Security owner nhận cảnh báo độc lập
 ```
 
 ## 5. Không có cửa sổ mù
 
 ### Control
 
-- EventBridge bắt `StopLogging`, `DeleteTrail`, `UpdateTrail`, `PutEventSelectors`.
-- Operator boundary loại quyền mutate CloudTrail/audit bucket/alert controls.
-- Audit-admin tách biệt, MFA/session attribution.
+- EventBridge primary/global bắt mutation CloudTrail, audit bucket, alert plane và IAM protection bằng **service-specific event source**; không giả định một common source cho mọi AWS API.
+- Operator boundary loại quyền mutate CloudTrail/audit bucket/alert controls, IAM boundary/policy/attachment và trust path được review.
+- Audit-admin chỉ đọc evidence; break-glass recovery chỉ có `StartLogging`/`EnableRule`. Mọi delete/recreate control phải qua incident/root-custodian và Terraform recovery change tách biệt.
 - Object Lock bảo vệ log đã delivery.
+- Mỗi anti-audit EventBridge rule phải match một API call bị deny thật trước verdict; Terraform pattern/plan không phải bằng chứng match runtime.
 
 ### Hai giai đoạn
 
@@ -114,9 +123,13 @@ resources.ARN startsWith arn:aws:s3:::<bucket>/<prefix>/
 
 Khi attacker kéo nhiều object, team có chuỗi `GetObject` để dựng actor/time/resource. Không bật mọi bucket trước cost baseline.
 
+### Coverage matrix bắt buộc
+
+[m12-coverage-v1.0.md](m12-coverage-v1.0.md) là input bắt buộc trước plan. Matrix phải liệt kê và phân loại tất cả S3 bucket/prefix, secret metadata và data path nhạy cảm; mỗi S3 hàng `Sensitive` phải khớp exact ARN trong `s3_data_event_arns`. Không được tự động bỏ Terraform state: nếu state có sensitive output thì phải được log `GetObject` hoặc có compensating control được security owner chấp nhận. Audit archive không vào S3 data selector để tránh recursive logging.
+
 ### Secrets Manager
 
-Management read events ghi `GetSecretValue` và `BatchGetSecretValue`. Log không chứa `SecretString`. Demo dùng canary secret vô giá trị, không dùng `techx-tf3/flagd-sync-token` thật.
+Management read events ghi `GetSecretValue` và `BatchGetSecretValue`. Log không chứa `SecretString`. Demo dùng canary secret vô giá trị, không dùng `techx-tf3/flagd-sync-token` hay `sosflow/db-password` thật. Các secret mới phát hiện sau deploy phải được thêm vào coverage matrix trước khi được coi là covered.
 
 ## 7. Integrity và retention
 
@@ -124,6 +137,7 @@ Management read events ghi `GetSecretValue` và `BatchGetSecretValue`. Log khôn
 - Digest SHA-256 có chữ ký và liên kết digest trước.
 - `validate-logs` theo UTC window đã có digest.
 - S3 Versioning + Object Lock `COMPLIANCE` 365 ngày.
+- 365 ngày giữ được lịch sử đủ dài cho tấn công low-and-slow kéo dài nhiều ngày, điều tra hồi tố và một chu kỳ review/forensic; lifecycle không được xóa hoặc rút ngắn retain-until.
 - Lifecycle tiering không xóa/rút ngắn retain-until.
 - Ưu tiên S3-managed encryption/SSE-S3 cho MVP để tránh thêm CMK destructive path; dùng CMK chỉ khi có yêu cầu riêng.
 
@@ -137,7 +151,9 @@ Management read events ghi `GetSecretValue` và `BatchGetSecretValue`. Log khôn
 | IAM | detach/sửa boundary, role hoặc policy bảo vệ audit |
 | KMS | disable/schedule deletion/policy change nếu dùng CMK |
 
-Alert destination phải được xác nhận trước mentor demo.
+Hai SNS email subscription (primary và global) phải được xác nhận trước mentor demo. `PendingConfirmation` hoặc chỉ một alert plane hoạt động là `DEPLOYED/PARTIAL`, không phải `VERIFIED`.
+
+EventBridge và SNS hoạt động theo region. Với IAM/global-service tamper, không được giả định rule ở `ap-southeast-1` sẽ nhận event: CloudTrail global service event thường được ghi tại `us-east-1`, còn EventBridge matching/target là regional. Mentor test phải capture `awsRegion`, EventBridge invocation và SNS receipt; nếu denied IAM action chỉ xuất hiện ở `us-east-1` mà không có route/alert đã chứng minh, claim IAM alert vẫn `VERIFY-LIVE`, không phải pass.
 
 ## 9. Phạm vi ảnh hưởng
 
@@ -179,6 +195,8 @@ Thay đổi account-level:
 - Chấp nhận hai change độc lập: audit foundation và IAM hardening.
 - Xác nhận retention 365 ngày.
 - Xác nhận bucket/prefix nhạy cảm và security alert owner.
+- Phê duyệt coverage matrix đầy đủ và IAM scope/attachment mapping; chấp nhận residual risk root/break-glass bằng văn bản.
+- Chỉ chấp nhận verdict sau khi tất cả anti-audit rules match API call bị deny thật và alert regional evidence pass.
 - Cho phép live discovery chỉ đọc trước plan.
 - Không cho phép apply nếu plan có change/delete workload, edge, network, datastore hoặc flagd.
 
@@ -198,8 +216,18 @@ Chưa chốt tên bucket, selector S3, KMS key hay SNS subscriber từ static re
 - Chưa có bucket/prefix S3 production nào được owner phê duyệt làm data-event scope. Dùng selector giới hạn, không bật all-S3 data events.
 - EKS audit log 90 ngày được giữ làm nguồn timeline Kubernetes; CloudTrail archive Object Lock 365 ngày là nguồn audit AWS độc lập cần tạo mới.
 
+## 15. Ranh giới compliance trước và sau IAM hardening
+
+Audit foundation chỉ đạt `DEPLOYED/PARTIAL`: có CloudTrail, Object Lock, coverage S3 đã duyệt, digest và alert. Nó chưa chứng minh “không có cửa sổ mù” với current `AdministratorAccess` hoặc root, vì các identity đó vẫn có thể sửa audit controls trong cùng account.
+
+Chỉ sau PR IAM riêng (bounded operator, audit-admin/break-glass design), test deny/alert và mentor evidence thì T01/T02 mới được ghi `VERIFIED`. EKS audit log 90 ngày chỉ hỗ trợ dựng timeline Kubernetes; nó không thay thế CloudTrail integrity validation hoặc archive WORM của Mandate 12.
+
+## 16. Giới hạn của verdict `VERIFIED`
+
+`VERIFIED` chỉ có nghĩa là từ lúc trail delivery/digest healthy, với asset trong coverage matrix và daily identities đã harden, team đã chứng minh log/alert/integrity/retention theo evidence window. Nó không tạo coverage hồi tố trước deployment, không chứng minh root/break-glass bị chặn tuyệt đối, và không chứng minh liên tục alert delivery khi toàn bộ same-account alert plane bị thay đổi. Những giới hạn này phải xuất hiện trong mentor sign-off và residual-risk acceptance, không được ẩn sau từ “append-only”.
+
 ---
 
-**Phiên bản:** v1.4  
-**Cập nhật:** 17/07/2026  
-**Trạng thái:** READY FOR PREPARATION — chưa được phép apply
+**Phiên bản:** v1.6  
+**Cập nhật:** 18/07/2026  
+**Trạng thái:** READY FOR REVIEW — foundation deployment blocked pending gates

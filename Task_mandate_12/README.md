@@ -4,17 +4,19 @@ Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Dự 
 
 ## Bộ tài liệu hiện hành
 
-1. [m12-gap-v1.3.md](m12-gap-v1.3.md) — yêu cầu, hiện trạng và gap.
-2. [m12-solution-v1.4.md](m12-solution-v1.4.md) — solution được đề xuất và thiết kế.
-3. [m12-runbook-v1.3.md](m12-runbook-v1.3.md) — kế hoạch, gate và runbook.
-4. [m12-tests-v1.3.md](m12-tests-v1.3.md) — kịch bản kiểm thử và evidence.
+1. [m12-gap-v1.4.md](m12-gap-v1.4.md) — yêu cầu, hiện trạng và gap.
+2. [m12-coverage-v1.0.md](m12-coverage-v1.0.md) — matrix bắt buộc cho toàn bộ dữ liệu nhạy cảm và config control.
+3. [m12-iam-scope-v1.0.md](m12-iam-scope-v1.0.md) — inventory daily-admin/CI, migration và residual-risk acceptance.
+4. [m12-solution-v1.6.md](m12-solution-v1.6.md) — solution, thiết kế và giới hạn claim single-account.
+5. [m12-runbook-v1.5.md](m12-runbook-v1.5.md) — kế hoạch, gate và runbook.
+6. [m12-tests-v1.5.md](m12-tests-v1.5.md) — kịch bản kiểm thử và evidence.
 
 ## Tài liệu nguồn
 
 - [MANDATE-12-audit-anti-defeat-_BTC.md](MANDATE-12-audit-anti-defeat-_BTC.md) — đề chính thức; giữ nguyên nội dung.
 - [MANDATE-4_BTC.md](MANDATE-4_BTC.md) — chỉ tham khảo, không phải hạng mục đã triển khai.
 
-`code_audit/` đang tạm dừng; không dùng để triển khai khi solution chưa được phê duyệt.
+`code_audit/` có staging foundation, audit-access, controlled IAM executor (`iam_change`), local evidence extractor và hướng dẫn deploy. Deployment vẫn bị block cho đến khi coverage matrix, cả hai SNS recipient, backend, change window, IAM attachment mapping và root residual-risk acceptance được phê duyệt.
 
 ## Quy tắc version
 
@@ -24,6 +26,6 @@ Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Dự 
 
 ---
 
-**Phiên bản:** v1.4  
-**Cập nhật:** 17/07/2026  
-**Trạng thái:** READY FOR PREPARATION — chưa được phép apply
+**Phiên bản:** v1.6  
+**Cập nhật:** 18/07/2026  
+**Trạng thái:** READY FOR REVIEW — deployment blocked pending gates

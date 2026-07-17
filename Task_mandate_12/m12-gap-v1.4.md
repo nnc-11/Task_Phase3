@@ -1,6 +1,6 @@
 # Mandate 12 — Yêu cầu và gap analysis
 
-> **Trạng thái:** READY FOR PREPARATION · có static review và discovery chỉ đọc; chưa có apply.
+> **Trạng thái:** READY FOR REVIEW · discovery chỉ đọc hoàn tất; deployment bị block pending gates.
 
 ## 1. Mục tiêu
 
@@ -37,7 +37,8 @@ Mọi CloudTrail, Object Lock, KMS hoặc audit resource đều phải được 
 
 - Repository: `Phase3-TF3-Infra-Sentinel`.
 - Đã loại trừ `docs/docx_cdo02`.
-- Chỉ đọc tĩnh; không chạy Terraform, AWS CLI, Kubernetes, test, build hoặc deploy.
+- Phần phân tích repository ở mục này chỉ đọc tĩnh; không chạy Terraform, Kubernetes, test, build hoặc deploy.
+- Evidence AWS CLI chỉ đọc được ghi riêng tại mục 7 và revalidation mục 11; không suy diễn trạng thái live từ repository.
 - Không suy diễn trạng thái live từ tài liệu thiết kế.
 
 ### Quy ước
@@ -121,7 +122,7 @@ Kết luận discovery: Mandate 12 không thể tái sử dụng audit trail/Obj
 
 ## 9. Kết luận
 
-Repository có nền IaC, private access, KMS và identity flows tốt để triển khai audit độc lập. Tuy nhiên Mandate 12 hiện là **Not Ready/VERIFY-LIVE** vì chưa chứng minh trail, coverage, integrity, retention và operator boundary. Solution phải bắt đầu bằng discovery, sau đó dựng single-account audit foundation và IAM hardening thành hai change riêng.
+Repository có nền IaC, private access, KMS và identity flows tốt để triển khai audit độc lập. Discovery live ngày 17/07/2026 đã hoàn tất và xác nhận các gap: chưa có CloudTrail, Object Lock hay S3 data-event coverage; current admin vẫn có `AdministratorAccess`. Vì vậy Mandate 12 là **NOT READY FOR DEPLOY/VERIFY**, không còn ở trạng thái “chưa kiểm tra live”. Solution gồm audit foundation và IAM hardening là hai change riêng.
 
 **Giải thích mục 9:**  
 **1.**Nên chia làm 2 giai đoạn sau:    
@@ -140,7 +141,7 @@ Audit foundation: tạo CloudTrail, audit S3 bucket có Object Lock 365 ngày, l
 | `external-secrets.tf` dùng `secretsmanager:GetSecretValue` | Secrets Manager là coverage bắt buộc, không chỉ management events |
 | GitHub Terraform apply role gắn `AdministratorAccess` | Chưa có operator boundary đủ mạnh; IAM hardening phải là change riêng có migration/test |
 
-Các thông tin còn thiếu bắt buộc phải lấy bằng discovery chỉ đọc hoặc approval trước apply: bucket/prefix S3 cần data events, tên audit bucket, KMS/SNS owner, permission thực tế của CI và ảnh hưởng plan. Không suy diễn các giá trị này từ repository.
+Các thông tin còn thiếu bắt buộc phải lấy bằng approval hoặc revalidation chỉ đọc trước apply: bucket/prefix S3 cần data events, tên audit bucket, SNS owner, permission thực tế của CI và ảnh hưởng plan. Không suy diễn các giá trị này từ repository.
 
 ## 11. Revalidation AWS CLI ngày 17/07/2026
 
@@ -154,7 +155,7 @@ Discovery chỉ đọc được chạy lại bằng `arn:aws:iam::197826770971:u
 | Secrets | Có metadata của `sosflow/db-password` và `techx-corp-tf3/flagd-sync-token`; không đọc giá trị |
 | S3 | 7 bucket; chỉ product catalog và TF3 state có Versioning `Enabled`; không bucket nào có Object Lock |
 
-Kết quả giữ nguyên quyết định: tạo audit foundation mới, chỉ chọn S3 data-event scope sau khi owner phê duyệt bucket/prefix; tách IAM hardening khỏi change foundation.
+Kết quả giữ nguyên quyết định: tạo audit foundation mới, chỉ deploy khi S3 data-event scope và alert owner đã được phê duyệt; tách IAM hardening khỏi change foundation. Bảng này là tóm tắt revalidation của evidence table ở mục 7, không thay thế evidence gốc.
 
 ### Mô hình account đã xác nhận
 
@@ -165,6 +166,6 @@ Kết quả giữ nguyên quyết định: tạo audit foundation mới, chỉ c
 
 ---
 
-**Phiên bản:** v1.3  
-**Cập nhật:** 17/07/2026  
-**Trạng thái:** READY FOR PREPARATION — chưa được phép apply
+**Phiên bản:** v1.4  
+**Cập nhật:** 18/07/2026  
+**Trạng thái:** READY FOR REVIEW — deployment blocked pending gates
