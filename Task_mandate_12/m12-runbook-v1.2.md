@@ -1,6 +1,6 @@
 # Mandate 12 — Kế hoạch và runbook triển khai
 
-> **Trạng thái:** Draft for approval · không chạy trước khi solution file 02 được duyệt.
+> **Trạng thái:** READY FOR PREPARATION · chỉ thực hiện sau khi solution và gate được phê duyệt.
 
 ## 1. Nguyên tắc
 
@@ -30,6 +30,7 @@ Thu evidence:
 - EKS `api`/`audit`/`authenticator` logging đang bật, retention 90 ngày.
 - IAM user vận hành hiện tại có `AdministratorAccess` qua group.
 - Có hai secret live: `sosflow/db-password` và `techx-corp-tf3/flagd-sync-token`.
+- Có 7 S3 bucket; chưa bucket nào có Object Lock. Chỉ `techx-products-catalog-2026` và `techx-tf3-197826770971-tfstate` có Versioning `Enabled`.
 
 Do đó Phase 1 phải tạo audit foundation mới; Phase 3 IAM hardening là điều kiện trước khi chạy deny test trên operator role.
 
@@ -125,7 +126,7 @@ Tối thiểu:
 - chạy `validate-logs`;
 - dựng một forensic timeline cloud/Kubernetes/Git nếu action liên quan EKS.
 
-Chi tiết nằm trong file `04-kich-ban-tan-cong-va-bang-chung-mandate-12.md`.
+Chi tiết nằm trong file `m12-tests-v1.2.md`.
 
 ## 7. Vận hành sau triển khai
 
@@ -186,8 +187,20 @@ Resource mới
 - Cost trong budget.
 - Không ảnh hưởng storefront, private ops hoặc flagd.
 
+## 11. Điều kiện bắt đầu chuẩn bị deployment
+
+Static review đủ để bắt đầu chuẩn bị PR/code ở một audit root riêng, nhưng chưa cho phép chạy apply. Trước khi tạo PR phải chốt bốn input: tên/region audit bucket, danh sách S3 bucket-prefix nhạy cảm, KMS/SNS alert owner và backend state key của root audit.
+
+PR audit phải có plan riêng, không có thay đổi trong `infra/live/production`; reviewer đối chiếu plan với allowlist audit resources. Nếu plan có thay đổi EKS, network, Cloudflare, datastore, flagd hoặc resource workload khác thì dừng và tách nguyên nhân trước khi review tiếp.
+
+Sau PR mới thực hiện discovery chỉ đọc để xác nhận thông số live và quyền thực thi. Chỉ khi tất cả gate pass mới chuyển từ `READY FOR PREPARATION` sang `APPROVED FOR APPLY`.
+
+## 12. Input còn thiếu trước PR
+
+AWS CLI đã đủ để loại bỏ giả định sai về trail/Object Lock, nhưng không tự quyết định scope nghiệp vụ. Owner phải phê duyệt bằng văn bản: bucket/prefix S3 cần log `GetObject`, người nhận SNS, tên audit bucket, backend state key và vai trò audit-admin. Không chọn `sosflow/db-password`, `flagd-sync-token`, Terraform state hay production object làm canary.
+
 ---
 
-**Phiên bản:** v1.0  
+**Phiên bản:** v1.2  
 **Cập nhật:** 17/07/2026  
-**Trạng thái:** DRAFT — chỉ dùng sau khi solution được phê duyệt
+**Trạng thái:** READY FOR PREPARATION — chưa được phép apply

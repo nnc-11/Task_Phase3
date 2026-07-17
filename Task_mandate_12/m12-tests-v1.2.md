@@ -1,6 +1,6 @@
 # Mandate 12 — Kịch bản tấn công và bằng chứng
 
-> **Trạng thái:** Draft for approval · thiết kế cho single-account hardened audit.
+> **Trạng thái:** READY FOR PREPARATION · thiết kế cho single-account hardened audit; chưa chạy test.
 
 ## 1. Quy tắc an toàn
 
@@ -166,8 +166,18 @@ Metadata ghi UTC window, account, region, principal/session, target resource, ap
 - Identity/forensic attribution pass.
 - Không ảnh hưởng storefront, private ops hoặc flagd.
 
+## 15. Chuẩn bị test từ static review
+
+Static review xác định được hai fixture bắt buộc: một secret chỉ đọc qua `Secrets Manager` (không đọc giá trị secret) và object tại bucket/prefix được owner phê duyệt. Không dùng Terraform state, manifest secret, EKS workload, storefront hoặc flagd làm fixture test.
+
+Mọi test trong tài liệu này chỉ được chạy sau khi audit foundation đã deploy và delivery healthy. Trước đó, test matrix là checklist chuẩn bị evidence; không phải bằng chứng Mandate 12 đã đạt.
+
+## 16. Fixture sau AWS CLI discovery
+
+Discovery xác nhận có hai secret production (`sosflow/db-password`, `techx-corp-tf3/flagd-sync-token`) và 7 S3 bucket, nhưng không xác định được fixture an toàn cho mentor test. Vì vậy Phase 1 phải tạo **canary secret mới không có giá trị nghiệp vụ** và **canary S3 object mới, không nhạy cảm** trong prefix đã được owner duyệt. Không dùng Terraform state, secret hiện hữu, object production hoặc log archive thật làm fixture.
+
 ---
 
-**Phiên bản:** v1.0  
+**Phiên bản:** v1.2  
 **Cập nhật:** 17/07/2026  
-**Trạng thái:** DRAFT — chỉ chạy sau khi solution được phê duyệt
+**Trạng thái:** READY FOR PREPARATION — chưa được phép apply

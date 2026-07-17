@@ -1,6 +1,6 @@
 # Mandate 12 — Solution và thiết kế
 
-> **Trạng thái:** Draft for approval · phương án chọn: single-account hardened audit.
+> **Trạng thái:** READY FOR PREPARATION · phương án chọn: single-account hardened audit; chưa được phép apply.
 
 ## 1. Quyết định
 
@@ -182,8 +182,24 @@ Thay đổi account-level:
 - Cho phép live discovery chỉ đọc trước plan.
 - Không cho phép apply nếu plan có change/delete workload, edge, network, datastore hoặc flagd.
 
+## 13. Quyết định tích hợp từ static review
+
+Giải pháp đã chọn vẫn khả thi với repository hiện tại, theo hướng **Terraform root audit riêng** (dự kiến `infra/live/audit`) dùng state key riêng. Root này chỉ sở hữu audit bucket, CloudTrail, EventBridge/SNS và policy audit; không đưa các resource đó vào `infra/live/production` đang quản lý EKS/network/edge.
+
+Lý do: production root có nhiều module và provider Cloudflare; gộp audit vào đó tạo blast radius plan không cần thiết. Root audit riêng vẫn tạo được CloudTrail account-level cho cùng account nên coverage không phụ thuộc việc sửa workload EKS hay ứng dụng.
+
+Chưa chốt tên bucket, selector S3, KMS key hay SNS subscriber từ static repo. Các giá trị này là input được phê duyệt ở Phase 0, không hard-code theo suy đoán. IAM operator boundary cũng chưa được coi là hoàn tất vì static code cho thấy apply role vẫn có `AdministratorAccess`.
+
+## 14. Input đã xác nhận từ AWS CLI
+
+- Account mục tiêu là `197826770971`, region chính `ap-southeast-1`; chưa có CloudTrail để import/tái sử dụng.
+- Không bucket nào trong 7 bucket hiện có dùng Object Lock. Audit archive phải là bucket mới, tạo Object Lock ngay khi tạo bucket.
+- Hai secret hiện có là `sosflow/db-password` và `techx-corp-tf3/flagd-sync-token`. Chúng bắt buộc thuộc management-event coverage, nhưng **không** được dùng làm canary hoặc đọc value để test.
+- Chưa có bucket/prefix S3 production nào được owner phê duyệt làm data-event scope. Dùng selector giới hạn, không bật all-S3 data events.
+- EKS audit log 90 ngày được giữ làm nguồn timeline Kubernetes; CloudTrail archive Object Lock 365 ngày là nguồn audit AWS độc lập cần tạo mới.
+
 ---
 
-**Phiên bản:** v1.0  
+**Phiên bản:** v1.2  
 **Cập nhật:** 17/07/2026  
-**Trạng thái:** DRAFT — chờ phê duyệt solution
+**Trạng thái:** READY FOR PREPARATION — chưa được phép apply

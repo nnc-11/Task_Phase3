@@ -1,6 +1,6 @@
 # Mandate 12 — Yêu cầu và gap analysis
 
-> **Trạng thái:** Draft for approval · phân tích tĩnh repository, chưa kiểm tra AWS/EKS live.
+> **Trạng thái:** READY FOR PREPARATION · có static review và discovery chỉ đọc; chưa có apply.
 
 ## 1. Mục tiêu
 
@@ -80,7 +80,7 @@ Mọi CloudTrail, Object Lock, KMS hoặc audit resource đều phải được 
 | Config changes | Không có durable CloudTrail coverage cho IAM/KMS/S3/EKS/CloudTrail | Critical |
 | Integrity digest | Không có trail nên không có validation/digest | Critical |
 | WORM retention | Không bucket nào có Object Lock | Critical |
-| EKS forensic | EKS audit live/retention chưa xác nhận | High |
+| EKS forensic | EKS `api`/`audit`/`authenticator` đang bật nhưng chỉ lưu CloudWatch 90 ngày; không thay CloudTrail archive | High |
 | Identity attribution | Có assume-role patterns nhưng còn admin identity; cần kiểm tra shared credential/session | High |
 
 ## 7. Live discovery bắt buộc trước phê duyệt triển khai
@@ -123,8 +123,36 @@ Kết luận discovery: Mandate 12 không thể tái sử dụng audit trail/Obj
 
 Repository có nền IaC, private access, KMS và identity flows tốt để triển khai audit độc lập. Tuy nhiên Mandate 12 hiện là **Not Ready/VERIFY-LIVE** vì chưa chứng minh trail, coverage, integrity, retention và operator boundary. Solution phải bắt đầu bằng discovery, sau đó dựng single-account audit foundation và IAM hardening thành hai change riêng.
 
+## 10. Kết luận static readiness
+
+**Đủ để lập bốn tài liệu và bắt đầu chuẩn bị deployment; chưa đủ để apply.** Static review xác nhận đúng account/region mục tiêu (`ap-southeast-1`), Terraform root production (`infra/live/production`), backend S3 và các workload nhạy cảm cần coverage (EKS, Secrets Manager, Terraform state).
+
+| Static evidence | Ý nghĩa với Mandate 12 |
+|---|---|
+| `infra/live/production` có provider AWS, backend S3 và tag chuẩn TF3 | Có convention rõ để chuẩn bị một Terraform root audit tách biệt, tránh sửa workload root hiện hữu |
+| `infra/bootstrap/backend` đã có S3 state versioning, encryption và public-access block | Có mẫu hạ tầng state; không đồng nghĩa bucket audit có Object Lock |
+| Không tìm thấy `aws_cloudtrail` trong `infra/` | Audit foundation chưa được quản lý bằng IaC; deployment phải bổ sung resource mới |
+| `external-secrets.tf` dùng `secretsmanager:GetSecretValue` | Secrets Manager là coverage bắt buộc, không chỉ management events |
+| GitHub Terraform apply role gắn `AdministratorAccess` | Chưa có operator boundary đủ mạnh; IAM hardening phải là change riêng có migration/test |
+
+Các thông tin còn thiếu bắt buộc phải lấy bằng discovery chỉ đọc hoặc approval trước apply: bucket/prefix S3 cần data events, tên audit bucket, KMS/SNS owner, permission thực tế của CI và ảnh hưởng plan. Không suy diễn các giá trị này từ repository.
+
+## 11. Revalidation AWS CLI ngày 17/07/2026
+
+Discovery chỉ đọc được chạy lại bằng `arn:aws:iam::197826770971:user/cdo-2-admin-team` tại `ap-southeast-1`. Không có API mutation, không đọc `SecretString` hay object S3.
+
+| Hạng mục | Kết quả xác nhận |
+|---|---|
+| CloudTrail | `describe-trails --include-shadow-trails` trả `trailList: []` |
+| EKS | `api`, `audit`, `authenticator` bật; log group retention 90 ngày, không có CMK riêng |
+| IAM | User hiện tại thuộc `AIO2-Admin`; group gắn `AdministratorAccess` và `AWSBillingReadOnlyAccess` |
+| Secrets | Có metadata của `sosflow/db-password` và `techx-corp-tf3/flagd-sync-token`; không đọc giá trị |
+| S3 | 7 bucket; chỉ product catalog và TF3 state có Versioning `Enabled`; không bucket nào có Object Lock |
+
+Kết quả giữ nguyên quyết định: tạo audit foundation mới, chỉ chọn S3 data-event scope sau khi owner phê duyệt bucket/prefix; tách IAM hardening khỏi change foundation.
+
 ---
 
-**Phiên bản:** v1.0  
+**Phiên bản:** v1.2  
 **Cập nhật:** 17/07/2026  
-**Trạng thái:** DRAFT — chờ phê duyệt solution
+**Trạng thái:** READY FOR PREPARATION — chưa được phép apply

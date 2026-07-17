@@ -4,10 +4,10 @@ Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Repos
 
 ## Bộ tài liệu hiện hành
 
-1. [m12-gap-v1.0.md](m12-gap-v1.0.md) — yêu cầu, hiện trạng và gap.
-2. [m12-solution-v1.0.md](m12-solution-v1.0.md) — solution được đề xuất và thiết kế.
-3. [m12-runbook-v1.0.md](m12-runbook-v1.0.md) — kế hoạch, gate và runbook.
-4. [m12-tests-v1.0.md](m12-tests-v1.0.md) — kịch bản kiểm thử và evidence.
+1. [m12-gap-v1.2.md](m12-gap-v1.2.md) — yêu cầu, hiện trạng và gap.
+2. [m12-solution-v1.2.md](m12-solution-v1.2.md) — solution được đề xuất và thiết kế.
+3. [m12-runbook-v1.2.md](m12-runbook-v1.2.md) — kế hoạch, gate và runbook.
+4. [m12-tests-v1.2.md](m12-tests-v1.2.md) — kịch bản kiểm thử và evidence.
 
 ## Tài liệu nguồn
 
@@ -24,6 +24,6 @@ Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Repos
 
 ---
 
-**Phiên bản:** v1.0  
+**Phiên bản:** v1.2  
 **Cập nhật:** 17/07/2026  
-**Trạng thái:** DRAFT — chờ phê duyệt solution
+**Trạng thái:** READY FOR PREPARATION — chưa được phép apply
