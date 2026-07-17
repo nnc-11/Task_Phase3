@@ -16,7 +16,7 @@
 | `iam_hardening/operator-boundary-policy.template.json` | Strict boundary mặc định; deny mọi `sts:AssumeRole`, chỉ attach khi target không cần assume role. |
 | `iam_hardening/operator-boundary-policy.allowlisted-assume-role.template.json` | Variant chỉ dùng khi exact non-audit assume-role targets đã được IAM/CI owner review/test. |
 | `tools/Export-M12CloudTrailEvidence.ps1` | Local-only: decompress/parse một log CloudTrail `.json.gz` đã tải bằng read-only role, xuất metadata redacted. |
-| [`HD_deploy-v1.7.md`](HD_deploy-v1.7.md) | Copy, plan, apply, xác nhận hai alert planes, verify integrity/evidence và rollback an toàn. |
+| [`HD_deploy-v1.8.md`](HD_deploy-v1.8.md) | Quy trình gate 0–11, cách lấy phụ thuộc, deploy ba state độc lập, verify integrity/evidence và rollback an toàn. |
 
 Mục tiêu copy là `Phase3-TF3-Infra-Sentinel/infra/live/audit/`. Không đặt file vào `infra/live/production/` vì root đó quản lý EKS, network và edge đang chạy.
 
@@ -26,6 +26,6 @@ Mục tiêu copy là `Phase3-TF3-Infra-Sentinel/infra/live/audit/`. Không đặ
 
 ---
 
-**Phiên bản:** v1.5  
-**Cập nhật:** 18/07/2026  
+**Phiên bản:** v1.6
+**Cập nhật:** 18/07/2026
 **Trạng thái:** READY FOR REVIEW — chưa được phép deploy
