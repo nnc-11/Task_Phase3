@@ -21,17 +21,17 @@ Ngoài ra log phải được giữ đủ lâu cho một cuộc tấn công kéo
 | Toàn vẹn mật mã | Log/digest không thể bị sửa/xóa âm thầm; chain gap bị phát hiện | CloudTrail log file validation và `validate-logs` |
 | Retention | Có thời gian giữ rõ ràng và không thể rút ngắn tùy tiện | Object Lock/retention/lifecycle evidence |
 
-## 3. Baseline kế thừa Mandate 4
+## 3. Mandate 4 chỉ là tài liệu tham khảo
 
-Mandate 12 kế thừa các yêu cầu của Mandate 4:
+`MANDATE-4_BTC.md` là đề tham khảo, **không phải work đã hoàn thành** và không được dùng làm bằng chứng hay baseline triển khai. Mandate 12 được phân tích và thiết kế hoàn toàn từ hiện trạng live của product TF3.
+
+Các ý có ích từ đề tham khảo chỉ được dùng để tăng chất lượng solution Mandate 12:
 
 - audit cả AWS cloud và Kubernetes/EKS;
 - dựng timeline ai-làm-gì-khi-nào và nội dung thay đổi;
-- log không bị người vận hành tự xóa;
-- mọi hành động quy về danh tính cá nhân/session, không dùng chung account;
-- mentor có thể chọn một sự kiện bất kỳ để team làm forensic tại chỗ.
+- mọi hành động quy về danh tính cá nhân/session, không dùng chung account.
 
-Object Lock hoặc audit resources từng dùng cho Mandate 4 chỉ được tái sử dụng sau khi kiểm tra live ownership, cấu hình và retention.
+Mọi CloudTrail, Object Lock, KMS hoặc audit resource đều phải được tạo mới hoặc xác minh trực tiếp từ AWS live; không có giả định “đã có từ Mandate 4”.
 
 ## 4. Phạm vi phân tích repository
 
@@ -59,26 +59,27 @@ Object Lock hoặc audit resources từng dùng cho Mandate 4 chỉ được tá
 | EKS KMS encryption | `CONFIRMED-REPO` | Không đồng nghĩa CloudTrail archive đã được bảo vệ |
 | External Secrets và `techx-tf3/flagd-sync-token` | `CONFIRMED-REPO` | Là resource cần coverage `GetSecretValue`; không dùng secret thật để demo |
 | Terraform apply role có `AdministratorAccess` | `CONFIRMED-REPO` | Rủi ro lớn: có thể sửa account-local audit/IAM controls |
-| CloudTrail trail đang chạy | `VERIFY-LIVE` | Không thấy `aws_cloudtrail` trong production Terraform |
-| S3 data-event selectors | `VERIFY-LIVE` | Chưa thấy được codify |
-| Log file integrity validation | `VERIFY-LIVE` | Chưa thấy được codify |
-| Object Lock từ Mandate 4 | `VERIFY-LIVE` | Đề nói đã chứng minh nhưng repository không đủ tái xác nhận |
-| EKS control-plane audit logging | `VERIFY-LIVE` | Có tài liệu nhắc tới, chưa thấy cấu hình Terraform tương đương |
+| CloudTrail trail đang chạy | `CONFIRMED-LIVE: absent` | `describe-trails --include-shadow-trails` trả danh sách rỗng; chỉ có Event History 90 ngày |
+| S3 data-event selectors | `CONFIRMED-LIVE: absent` | Không có trail để chứa selector |
+| Log file integrity validation | `CONFIRMED-LIVE: absent` | Không có trail/digest chain |
+| S3 Object Lock hiện có | `CONFIRMED-LIVE: absent` | Kiểm tra 7 bucket trong account: không bucket nào có Object Lock configuration |
+| EKS control-plane audit logging | `CONFIRMED-LIVE: enabled` | `api`, `audit`, `authenticator` bật; `controllerManager`, `scheduler` tắt |
+| EKS audit retention | `CONFIRMED-LIVE` | Log group `/aws/eks/techx-corp-tf3/cluster`, retention 90 ngày, ~1.47 GB; không gắn CMK riêng |
 | AWS Organizations/member account | `VERIFY-LIVE` | Không dùng làm tiền đề cho phương án chọn |
-| Datastore/secret Mandate 8 | `VERIFY-LIVE` | Chỉ đưa vào coverage nếu đã tồn tại live |
+| Datastore/secret Mandate 8 | `CONFIRMED-LIVE: partial` | Có `sosflow/db-password`; chỉ đưa resource khác vào coverage khi tồn tại live |
 
 ## 6. Gap analysis
 
 | Mandate control | Gap hiện tại | Mức |
 |---|---|---|
-| Trail liên tục | Chưa codify trail, status và owner | Critical |
-| Chống operator tắt trail | Apply role còn admin; deny policy có thể bị tự gỡ nếu không có boundary/access migration | Critical |
-| Cảnh báo anti-audit | Chưa thấy EventBridge/SNS controls | High |
-| S3 object reads | Chưa thấy S3 data events | Critical |
-| Secret reads | AWS có thể tạo management read event nhưng chưa chứng minh trail durable thu sự kiện | High |
-| Config changes | Chưa có durable coverage matrix cho IAM/KMS/S3/EKS/CloudTrail | High |
-| Integrity digest | Chưa thấy validation/digest configuration | Critical |
-| WORM retention | Mandate 4 evidence cần kiểm tra live | High |
+| Trail liên tục | Live xác nhận không có trail; chỉ có Event History | Critical |
+| Chống operator tắt trail | IAM user thuộc group `AIO2-Admin` có `AdministratorAccess`; cần access migration/boundary | Critical |
+| Cảnh báo anti-audit | Chưa thấy EventBridge/SNS controls được codify hoặc xác minh | High |
+| S3 object reads | Không có trail/data events | Critical |
+| Secret reads | Có 2 secret live nhưng không có durable trail thu `GetSecretValue` | Critical |
+| Config changes | Không có durable CloudTrail coverage cho IAM/KMS/S3/EKS/CloudTrail | Critical |
+| Integrity digest | Không có trail nên không có validation/digest | Critical |
+| WORM retention | Không bucket nào có Object Lock | Critical |
 | EKS forensic | EKS audit live/retention chưa xác nhận | High |
 | Identity attribution | Có assume-role patterns nhưng còn admin identity; cần kiểm tra shared credential/session | High |
 
@@ -88,12 +89,27 @@ Chỉ đọc, không mutation:
 
 1. Caller/account/region thực tế.
 2. `describe-trails`, `get-trail-status`, event selectors và validation.
-3. Bucket/KMS/Object Lock/lifecycle từ Mandate 4.
+3. Bucket/KMS/Object Lock/lifecycle hiện có trong account.
 4. EKS control-plane log types, CloudWatch log group và retention.
 5. IAM users/roles có `AdministratorAccess`, cách CI assume apply role và break-glass path.
 6. Danh sách bucket/prefix nhạy cảm hiện có.
 7. Danh sách secret hiện có; không đọc secret value.
 8. Event volume/cost baseline.
+
+### Kết quả discovery live ngày 17/07/2026
+
+Discovery chỉ đọc được chạy bằng IAM identity `arn:aws:iam::197826770971:user/cdo-2-admin-team` tại `ap-southeast-1`; không đọc `SecretString` và không gọi API mutation.
+
+| Kiểm tra | Kết quả |
+|---|---|
+| CloudTrail | Không có trail (`trailList: []`) |
+| CloudTrail Event History | Có management events 90 ngày, nhưng không thay thế trail/S3 archive/digest |
+| EKS logs | `api`, `audit`, `authenticator` enabled; log group 90 ngày |
+| Secrets metadata | `sosflow/db-password`, `techx-corp-tf3/flagd-sync-token` |
+| IAM identity | User thuộc group `AIO2-Admin`; group gắn `AdministratorAccess` và `AWSBillingReadOnlyAccess` |
+| S3 | Có 7 bucket; không bucket nào có Object Lock configuration; chỉ `techx-products-catalog-2026` và `techx-tf3-197826770971-tfstate` trả Versioning `Enabled` |
+
+Kết luận discovery: Mandate 12 không thể tái sử dụng audit trail/Object Lock có sẵn vì hiện không có. EKS audit log là asset duy nhất đã vận hành có thể giữ lại và nối vào forensic timeline. Audit foundation phải tạo mới, còn IAM hardening là change riêng bắt buộc trước mentor deny test.
 
 ## 8. Ràng buộc
 
@@ -107,3 +123,8 @@ Chỉ đọc, không mutation:
 
 Repository có nền IaC, private access, KMS và identity flows tốt để triển khai audit độc lập. Tuy nhiên Mandate 12 hiện là **Not Ready/VERIFY-LIVE** vì chưa chứng minh trail, coverage, integrity, retention và operator boundary. Solution phải bắt đầu bằng discovery, sau đó dựng single-account audit foundation và IAM hardening thành hai change riêng.
 
+---
+
+**Phiên bản:** v1.0  
+**Cập nhật:** 17/07/2026  
+**Trạng thái:** DRAFT — chờ phê duyệt solution

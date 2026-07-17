@@ -17,6 +17,8 @@ Chọn triển khai Mandate 12 trong AWS account TF3 hiện tại:
 
 AWS Organizations/cross-account archive là phương án nâng cấp, không chọn cho lần triển khai này vì chưa xác nhận hạ tầng/account boundary tương ứng.
 
+Live discovery ngày 17/07/2026 xác nhận account hiện **không có CloudTrail trail và không có Object Lock bucket**. Mandate 12 vì vậy tạo mới audit foundation từ product hiện tại; EKS audit log 90 ngày là control live duy nhất được giữ lại cho forensic timeline.
+
 ## 2. Kiến trúc mục tiêu
 
 ```mermaid
@@ -180,3 +182,8 @@ Thay đổi account-level:
 - Cho phép live discovery chỉ đọc trước plan.
 - Không cho phép apply nếu plan có change/delete workload, edge, network, datastore hoặc flagd.
 
+---
+
+**Phiên bản:** v1.0  
+**Cập nhật:** 17/07/2026  
+**Trạng thái:** DRAFT — chờ phê duyệt solution

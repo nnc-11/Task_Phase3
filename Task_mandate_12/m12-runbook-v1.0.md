@@ -17,12 +17,21 @@ Thu evidence:
 
 1. Caller/account/region.
 2. Trail hiện có, status, selectors, validation và destination.
-3. Bucket/Object Lock/KMS/lifecycle Mandate 4.
+3. Bucket/Object Lock/KMS/lifecycle hiện có trong account.
 4. EKS control-plane logs và retention.
 5. IAM admin users/roles, CI apply role, assume-role path và root hygiene.
 6. Sensitive S3 bucket/prefix.
 7. Secret inventory metadata; không đọc secret value.
 8. Event volume và cost baseline.
+
+### Kết quả đã xác nhận
+
+- Không có CloudTrail trail hoặc Object Lock bucket để tái sử dụng.
+- EKS `api`/`audit`/`authenticator` logging đang bật, retention 90 ngày.
+- IAM user vận hành hiện tại có `AdministratorAccess` qua group.
+- Có hai secret live: `sosflow/db-password` và `techx-corp-tf3/flagd-sync-token`.
+
+Do đó Phase 1 phải tạo audit foundation mới; Phase 3 IAM hardening là điều kiện trước khi chạy deny test trên operator role.
 
 ### Go/No-Go
 
@@ -177,3 +186,8 @@ Resource mới
 - Cost trong budget.
 - Không ảnh hưởng storefront, private ops hoặc flagd.
 
+---
+
+**Phiên bản:** v1.0  
+**Cập nhật:** 17/07/2026  
+**Trạng thái:** DRAFT — chỉ dùng sau khi solution được phê duyệt

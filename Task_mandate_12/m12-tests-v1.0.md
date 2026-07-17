@@ -166,3 +166,8 @@ Metadata ghi UTC window, account, region, principal/session, target resource, ap
 - Identity/forensic attribution pass.
 - Không ảnh hưởng storefront, private ops hoặc flagd.
 
+---
+
+**Phiên bản:** v1.0  
+**Cập nhật:** 17/07/2026  
+**Trạng thái:** DRAFT — chỉ chạy sau khi solution được phê duyệt

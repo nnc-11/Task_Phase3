@@ -1,31 +1,29 @@
-# Task Mandate 12 — Audit không thể bị đánh bại
+# Mandate 12 — Audit không thể bị đánh bại
 
-Thư mục này chứa tài liệu phân tích và mã staging cho Mandate 12 của TF3. Repository production `Phase3-TF3-Infra-Sentinel` chỉ được đọc; chưa có file nào trong `code_audit` được copy hoặc deploy. (sẽ có plan deploy sau review).
+Thư mục chỉ chứa tài liệu chuẩn bị cho Mandate 12 của TF3. Repository production chỉ được đọc; chưa có thay đổi hay triển khai nào vào production.
 
-## Đọc nhanh
+## Bộ tài liệu hiện hành
 
-### Bộ draft mới để phê duyệt
+1. [m12-gap-v1.0.md](m12-gap-v1.0.md) — yêu cầu, hiện trạng và gap.
+2. [m12-solution-v1.0.md](m12-solution-v1.0.md) — solution được đề xuất và thiết kế.
+3. [m12-runbook-v1.0.md](m12-runbook-v1.0.md) — kế hoạch, gate và runbook.
+4. [m12-tests-v1.0.md](m12-tests-v1.0.md) — kịch bản kiểm thử và evidence.
 
-1. `01-yeu-cau-va-gap-analysis-mandate-12.md`
-2. `02-solution-va-thiet-ke-mandate-12.md`
-3. `03-ke-hoach-va-runbook-trien-khai-mandate-12.md`
-4. `04-kich-ban-tan-cong-va-bang-chung-mandate-12.md`
+## Tài liệu nguồn
 
-Các file đánh số 01–06 cũ được giữ tạm để đối chiếu và chưa xóa. `code_audit/` đang tạm ngưng.
+- [MANDATE-12-audit-anti-defeat-_BTC.md](MANDATE-12-audit-anti-defeat-_BTC.md) — đề chính thức; giữ nguyên nội dung.
+- [MANDATE-4_BTC.md](MANDATE-4_BTC.md) — chỉ tham khảo, không phải hạng mục đã triển khai.
 
-### Tài liệu nguồn/cũ
+`code_audit/` đang tạm dừng; không dùng để triển khai khi solution chưa được phê duyệt.
 
-1. `MANDATE-12-audit-anti-defeat-_BTC.md` — đề chính thức.(không thay đổi)
-2. `01-tom-tat-yeu-cau-dau-vao-dau-ra-mandate-12.md` — yêu cầu và acceptance criteria.
-3. `02-phan-tich-du-an-hien-tai-voi-mandate-12.md` — hiện trạng/gap của TF3.
-4. `03-de-xuat-solution-mandate-12-va-trade-off.md` — giải pháp chọn.
-5. `04-runbook-trien-khai-mandate-12.md` — runbook.
-6. `05-thiet-ke-flow-mandate-12.md` — flow mục tiêu.
-7. `06-kich-ban-tan-cong-va-bang-chung-mandate-12.md` — mentor tests.
-8. `code_audit/` — Terraform staging và hướng dẫn triển khai.
+## Quy tắc version
 
-## Trạng thái
+- Minor (`v1.1` → `v1.2`): đổi tên file hiện hành và cập nhật nội dung; không giữ bản minor cũ.
+- Major (`v1.x` → `v2.0`): tạo bộ file mới, giữ bộ major cũ để đối chiếu.
+- Chỉ sửa bản mới nhất. Phiên bản và trạng thái luôn ghi ở cuối mỗi tài liệu làm việc.
 
-- Tài liệu/mã: `DESIGNED`.
-- AWS live: chưa kiểm tra hoặc triển khai trong task này.
-- Không đánh dấu `DEPLOYED`/`VERIFIED` trước khi plan, apply và mentor test có evidence.
+---
+
+**Phiên bản:** v1.0  
+**Cập nhật:** 17/07/2026  
+**Trạng thái:** DRAFT — chờ phê duyệt solution
