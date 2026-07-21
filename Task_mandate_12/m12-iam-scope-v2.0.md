@@ -54,7 +54,7 @@ Không còn hàng `TBD` cho effective-admin trước verdict.
 
 ## 7. Residual risk
 
-Single-account root có thể phá cả audit và alert plane. Trước `VERIFIED` phải có: root MFA, no access key, named custodian, incident-only use, review expiry, security/account-owner acceptance và external GitHub watchdog OIDC read-only. Nếu chưa có watchdog thì chỉ `PARTIAL` hoặc phải có signed exception; tuyệt đối không dùng static AWS key.
+Single-account root có thể phá cả audit và alert plane. Trước `VERIFIED` phải có: root MFA, không có root access key, named custodian, incident-only use, review expiry và security/account-owner ký chấp nhận residual risk single-account.
 
 ---
 

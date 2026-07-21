@@ -25,7 +25,6 @@ Phương án được chọn là **nâng cấp in-place nền Mandate 11**, khô
 4. Sửa router để critical event không bị automation allowlist hoặc suppression che mất.
 5. Thêm regional g7, global g8 và heartbeat 5 phút để phát hiện audit/IAM tamper hoặc blind window.
 6. IAM hardening là change riêng, thực hiện tại đúng Terraform root sở hữu principal.
-7. GitHub OIDC watchdog là tín hiệu ngoài account trước claim `VERIFIED`.
 
 **Kết luận:** giải pháp khả thi nhưng chưa được phép deploy. Bốn blocker phải đóng trước plan/apply:
 
@@ -72,7 +71,7 @@ Discovery ngày 21/07/2026 chỉ sử dụng API `list/get/describe`. Không đ�
 
 | Yêu cầu | Control triển khai | Bằng chứng PASS |
 |---|---|---|
-| Không có cửa sổ mù | Boundary/least privilege; critical router không suppress; g7/g8 tamper; heartbeat 5 phút; missing alarm; external watchdog | Denied request + event/alert + trail logging + heartbeat PASS + GitHub run xanh |
+| Không có cửa sổ mù | Boundary/least privilege; critical router không suppress; g7/g8 tamper; heartbeat 5 phút và missing-invocation alarm | Denied request + event/alert + trail vẫn logging + heartbeat PASS |
 | Đóng coverage gap | Advanced selectors gồm Management và exact S3 Object ARN; Secrets Manager reads giữ trong management events | Canary `GetObject`/`GetSecretValue` có actor, resource, UTC, request ID; không chứa secret value |
 | Toàn vẹn mật mã | CloudTrail validation tiếp tục bật; digest chain giữ tại vị trí gốc | `validate-logs` không `INVALID`/missing trong window sau cutover |
 | Giữ đủ lâu | Object mới `COMPLIANCE 365 ngày`; lifecycle 400 ngày | `GetObjectRetention` cho object sau cutover + lifecycle output + UTC cutover |
@@ -98,11 +97,10 @@ flowchart LR
 |---|---|---|
 | CloudTrail | Basic selector → advanced Management + approved S3 Data | Không đổi ARN/name; không stop logging |
 | Audit bucket | Governance 14 → Compliance 365 cho object mới; lifecycle 400 | Không tạo bucket mới; không claim hồi tố object cũ |
-| Router | Critical groups luôn alert; thêm group 7 | Automation/suppression không che anti-audit |
+| Router | Critical groups luôn alert; thêm regional group 7 và global group 8 | Automation/suppression không che anti-audit/IAM tamper |
 | EventBridge/SNS | Mở rộng rule và bảo vệ mutation | Tái sử dụng router/topics; recipient bắt buộc Confirmed |
 | Heartbeat | Lambda + schedule + Errors/Missing alarms | Phát hiện blind window ngay cả khi không có tamper event rõ |
 | IAM | Audit access + tailored boundary/least privilege | Change riêng, đúng state owner, rollout từng identity |
-| External | GitHub Actions OIDC read-only watchdog | 15 phút, branch protected, không static AWS key |
 
 ## 6. Dependency và gate trước triển khai
 
@@ -137,7 +135,7 @@ Dừng nếu xảy ra một trong các điều kiện:
 | 3 | Post-apply delivery/digest/retention/heartbeat | Digest bao phủ cutover; heartbeat PASS | 90–120 phút |
 | 4 | Canary `GetObject`/`GetSecretValue` và evidence | Coverage + integrity evidence pass | 60–120 phút |
 | 5 | IAM hardening change riêng, rollout từng identity | Simulation/baseline/deny tests pass | Nửa ngày hoặc hơn |
-| 6 | External watchdog + mentor tests + residual acceptance | T01–T12 pass; evidence hashed | 2–4 giờ |
+| 6 | Mentor tests, verdict và residual acceptance | T01–T11 pass; evidence hashed | 2–4 giờ |
 
 ## 8. Phase Audit Foundation
 
@@ -154,9 +152,6 @@ Thực hiện chi tiết theo [HD_audit_foundation-v2.0.md](code_audit/HD_audit_
 | `code_audit/foundation/production-heartbeat.tf.example` | `infra/live/production/audit-heartbeat.tf` |
 | `code_audit/foundation/production-variables-additions.tf.example` | `infra/live/production/m12-variables.tf` |
 | `code_audit/foundation/production-auto-tfvars.additions.example` | Merge approved values vào `production.auto.tfvars` |
-| `code_audit/external_watchdog/github-oidc-watchdog.tf.example` | `infra/bootstrap/github-oidc/m12-watchdog.tf` |
-| `code_audit/external_watchdog/m12-audit-watchdog.yml.example` | `.github/workflows/m12-audit-watchdog.yml` |
-| `code_audit/external_watchdog/watchdog.sh` | `.github/scripts/m12-watchdog.sh` |
 
 ### 8.2 Plan gate
 
@@ -224,7 +219,6 @@ Thực hiện riêng theo [HD_iam_hardening-v2.0.md](code_audit/HD_iam_hardening
 | T09 | IAM escalation | Boundary/trust/policy/OIDC mutation `explicitDeny` |
 | T10 | Forensic timeline | Identity → session → action → resource → UTC |
 | T11 | Cleanup/cost | Canary cleanup có record; owner chấp nhận cost/coverage |
-| T12 | External watchdog | Manual/scheduled GitHub run xanh; OIDC/trust failure tạo job đỏ ngoài account |
 
 Mỗi evidence directory phải có:
 
@@ -261,8 +255,7 @@ Không ghi credential, access-key ID, secret value hoặc production object cont
 
 ## 13. Rủi ro tồn dư
 
-- Single-account root không thể bị permissions boundary; cần MFA, no access key, named custodian và incident-only process.
-- Same-account alert plane vẫn có thể bị principal đủ quyền tấn công; heartbeat giảm blind window, external watchdog OIDC read-only là gate cho `VERIFIED` hoặc cần signed exception.
+- Single-account root không thể bị permissions boundary và vẫn có thể tác động audit/alert plane. Heartbeat giảm blind window nhưng không loại bỏ quyền root; bắt buộc root MFA, không có root access key, named custodian, incident-only process và signed residual acceptance.
 - Object giao trước cutover giữ retention cũ; claim 365 ngày chỉ tính cho object mới sau UTC cutover.
 - S3 data events phát sinh phí và có thể gây nhiễu nếu scope quá rộng; exact prefix và cost approval là bắt buộc.
 - EKS audit logging đã bật live nhưng chưa codify trong repo; heartbeat phải phát hiện nếu bị tắt/drift.
@@ -277,7 +270,7 @@ Không ghi credential, access-key ID, secret value hoặc production object cont
 - [ ] Object mới có Compliance retention ≥365 ngày và lifecycle 400 ngày.
 - [ ] Canary S3/secret coverage có parsed evidence sạch.
 - [ ] IAM effective-admin inventory, ownership, migration và denied tests hoàn tất.
-- [ ] T01–T12 pass; evidence có SHA-256 và observer/approver.
+- [ ] T01–T11 pass; evidence có SHA-256 và observer/approver.
 - [ ] Root/single-account residual risk được ký.
 
 > [!IMPORTANT]

@@ -12,7 +12,7 @@ Bộ chuẩn bị cho TF3 trên AWS account `197826770971`. Repository product c
 6. [m12-runbook-v2.0.md](m12-runbook-v2.0.md) — phase/gate/rollback.
 7. [m12-tests-v2.0.md](m12-tests-v2.0.md) — mentor tests và evidence.
 8. [m12-plan-v2.0.md](m12-plan-v2.0.md) — kế hoạch thực thi và gate.
-9. [code_audit/HD_audit_foundation-v2.0.md](code_audit/HD_audit_foundation-v2.0.md) — nâng cấp trail M11 + watchdog step-by-step.
+9. [code_audit/HD_audit_foundation-v2.0.md](code_audit/HD_audit_foundation-v2.0.md) — nâng cấp trail M11 và heartbeat step-by-step.
 10. [code_audit/HD_iam_hardening-v2.0.md](code_audit/HD_iam_hardening-v2.0.md) — IAM hardening step-by-step.
 
 Bộ tài liệu triển khai cũ `v1.x` đã được loại bỏ để tránh dùng nhầm; chỉ bộ `v2.0` hiện hành được dùng cho review và chuẩn bị deploy.

@@ -32,7 +32,6 @@ Không tạo trail M12 thứ hai. Nâng cấp trail M11 tại chính Terraform r
 4. lifecycle 400 ngày để dài hơn retain-until;
 5. giữ integrity validation và chứng minh bằng `validate-logs`;
 6. sửa critical alert suppression, thêm regional g7, global g8 và heartbeat 5 phút kiểm tra exact configuration/targets.
-7. thêm GitHub OIDC watchdog để có tín hiệu ngoài account trước khi claim `VERIFIED`.
 
 ## Giới hạn cutover
 
@@ -62,7 +61,7 @@ Object đã giao trước upgrade giữ retention cũ; thay default retention kh
 
 ## Rủi ro triển khai
 
-Phương án reuse tránh duplicate CloudTrail/cost nhưng **không còn độc lập hoàn toàn**: PR audit foundation phải sửa `infra/modules/audit-detection` và `infra/live/production`; watchdog cần change riêng ở `infra/bootstrap/github-oidc` và `.github`. Plan chỉ được update M11 audit resources + controls đã liệt kê; nếu có EKS/network/datastore/workload change thì NO-GO.
+Phương án reuse tránh duplicate CloudTrail/cost nhưng **không còn độc lập hoàn toàn**: PR audit foundation phải sửa `infra/modules/audit-detection` và `infra/live/production`. Plan chỉ được update M11 audit resources + controls đã liệt kê; nếu có EKS/network/datastore/workload change thì NO-GO.
 
 ## Kết luận
 

@@ -55,11 +55,7 @@ Canary secret + canary S3 object trong approved prefix; lấy parsed archive evi
 
 Thực hiện riêng theo [HD_iam_hardening-v2.0.md](code_audit/HD_iam_hardening-v2.0.md). Thay đổi từng identity tại đúng owning root; không gộp với audit foundation PR.
 
-## Phase 5 — External watchdog
-
-Owner `infra/bootstrap/github-oidc` tạo role OIDC read-only; đặt script/workflow theo `code_audit/external_watchdog/README.md`, bật branch protection và xác minh một manual run + một scheduled run đều xanh. Nếu chưa xong thì verdict tối đa `AUDIT READY/PARTIAL`, trừ signed exception.
-
-## Phase 6 — Mentor tests
+## Phase 5 — Mentor tests
 
 Chạy [m12-tests-v2.0.md](m12-tests-v2.0.md). Mutation chỉ bằng bounded test identity. Nếu action đáng lẽ deny nhưng thành công: dừng, preserve evidence, mở Critical incident.
 
@@ -72,7 +68,7 @@ Chạy [m12-tests-v2.0.md](m12-tests-v2.0.md). Mutation chỉ bằng bounded tes
 
 ## Definition of Done
 
-Coverage, integrity, retention, heartbeat, alerts, IAM deny tests, external watchdog và forensic attribution pass; cutover timestamp rõ; root residual risk được ký; product không bị ảnh hưởng.
+Coverage, integrity, retention, heartbeat, alerts, IAM deny tests và forensic attribution pass; cutover timestamp rõ; root residual risk được ký; product không bị ảnh hưởng.
 
 ---
 

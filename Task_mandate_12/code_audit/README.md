@@ -5,7 +5,6 @@
 | `foundation/` | Snippets nâng cấp in-place M11: data events, Compliance 365, regional g7, global g8 và heartbeat |
 | `iam_hardening/audit_access/` | Audit-admin read-only và break-glass recovery hẹp |
 | `iam_hardening/iam_change/` | Managed boundary động + executor cho identity đã xác nhận ownership; không dùng cho role thuộc state khác |
-| `external_watchdog/` | GitHub OIDC read-only role, scheduled workflow và script kiểm tra ngoài AWS account |
 | `tools/` | Parse bản sao CloudTrail log thành evidence redacted |
 | `HD_audit_foundation-v2.0.md` | Discovery → edit M11 → plan/apply → cutover evidence |
 | `HD_iam_hardening-v2.0.md` | IAM ownership → audit access → boundary → migration/test |

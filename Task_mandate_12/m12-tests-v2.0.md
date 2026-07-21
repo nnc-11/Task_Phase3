@@ -26,7 +26,6 @@ Chỉ test sau approval, dùng canary/bounded identity. Không test root, produc
 | T09 | IAM | Boundary/trust/policy/OIDC mutation denied; global group 8 alert; CI/ops baseline pass |
 | T10 | Forensic | Identity → session → action → resource → UTC; EKS supplemental nếu audit enabled |
 | T11 | Cleanup/cost | Canary cleanup recorded; one-trail cost/coverage trong approval |
-| T12 | External watchdog | OIDC AssumeRole thành công; manual + scheduled run xanh; bỏ/sai role ARN trong test branch làm job đỏ ngoài AWS |
 
 ## Cutover evidence
 
@@ -50,7 +49,7 @@ Mỗi `M12-Txx/` có metadata, request/result redacted, raw event, pre/post stat
 
 ## Verdict
 
-Chỉ `VERIFIED` khi T01–T12 pass, coverage/IAM complete, cutover timestamp rõ và root residual risk ký. Foundation pass nhưng IAM/watchdog chưa xong là `AUDIT READY/PARTIAL`.
+Chỉ `VERIFIED` khi T01–T11 pass, coverage/IAM complete, cutover timestamp rõ và root residual risk ký. Foundation pass nhưng IAM chưa xong là `AUDIT READY/PARTIAL`.
 
 ---
 

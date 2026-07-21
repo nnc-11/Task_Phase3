@@ -39,7 +39,6 @@ flowchart LR
 | Router | Critical groups không bị automation allowlist suppress; thêm group 7 audit-control tamper và group 8 IAM/OIDC tamper |
 | Regional rules | Thêm EventBridge/SNS/Lambda/CloudWatch/S3 control mutations |
 | Heartbeat | Lambda/schedule/alarms dùng topic M11; so exact trail/selectors, bucket controls, rule pattern/target, routers, topics/subscriptions, alarms và EKS audit |
-| External watchdog | GitHub Actions 15 phút, OIDC read-only; tạo tín hiệu ngoài AWS account khi role/trust/audit plane bị phá |
 
 ## Trade-off
 
@@ -65,9 +64,7 @@ AWS xác nhận default retention áp dụng cho object được đặt vào buc
 2. Router luôn alert nhóm critical kể cả actor là Terraform automation.
 3. Heartbeat 5 phút kiểm tra `IsLogging`, log age 20 phút, digest age 90 phút, log validation, exact selectors, S3 lock/lifecycle/encryption/public block, exact rule pattern/target, routers, subscriptions, alarms và EKS audit.
 4. Missing invocation và Lambda error có CloudWatch alarm.
-5. GitHub watchdog OIDC read-only chạy 15 phút một lần; AssumeRole hoặc check fail tạo trạng thái đỏ ngoài AWS account.
-
-Root vẫn là residual risk trong same-account. Không dùng static key cho watchdog. Nếu chưa có external watchdog/branch protection thì chỉ claim `DEPLOYED/PARTIAL`, trừ khi security/account owner ký chấp nhận residual risk.
+Root vẫn là residual risk trong same-account và nằm ngoài permissions boundary. Giải pháp yêu cầu root MFA, không có root access key, named custodian, incident-only process và security/account owner ký chấp nhận residual risk.
 
 AWS Config không phải yêu cầu bắt buộc của Mandate 12 và live hiện chưa triển khai recorder. Không thêm Config vào foundation PR để tránh mở rộng scope/cost; nếu sponsor yêu cầu, triển khai thành change riêng rồi mới thêm Config check vào heartbeat.
 
@@ -87,7 +84,7 @@ AWS Config không phải yêu cầu bắt buộc của Mandate 12 và live hiệ
 ## Trạng thái hoàn thành
 
 - Upgrade applied + digest/heartbeat/coverage pass: `AUDIT READY/PARTIAL`.
-- IAM hardening + denied tests + external watchdog + mentor evidence: `VERIFIED` trong scope daily identities; root residual risk phải ký nhận.
+- IAM hardening + denied tests + mentor evidence: `VERIFIED` trong scope daily identities; root residual risk phải ký nhận.
 - Claim chỉ tính từ cutover timestamp.
 
 ## Tài liệu AWS đối chiếu
