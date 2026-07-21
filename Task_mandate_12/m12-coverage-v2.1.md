@@ -51,7 +51,7 @@ Inventory live không đồng nghĩa bật data events cho cả 7 bucket còn l�
 |---|---|---|---|---:|---|
 | `TBD` | `TBD` | `TBD` | `TBD` | `TBD` | `PENDING` |
 
-Giá trị trong bảng phải khớp 1:1 với `foundation/terraform.tfvars`; không dùng wildcard. Toàn bucket hợp lệ là `arn:aws:s3:::bucket/`.
+Giá trị trong bảng phải khớp 1:1 với `audit_detection_s3_data_event_arns` được merge vào `infra/live/production/production.auto.tfvars`; không dùng wildcard. Toàn bucket hợp lệ là `arn:aws:s3:::bucket/`.
 
 ## 5. Gate
 
@@ -63,6 +63,6 @@ Giá trị trong bảng phải khớp 1:1 với `foundation/terraform.tfvars`; k
 
 ---
 
-**Phiên bản:** v2.0
+**Phiên bản:** v2.1
 **Cập nhật:** 21/07/2026
 **Trạng thái:** LIVE INVENTORY COMPLETE / CLASSIFICATION PENDING — chưa đủ điều kiện plan

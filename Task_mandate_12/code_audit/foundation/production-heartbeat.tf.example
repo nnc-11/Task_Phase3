@@ -1,14 +1,50 @@
 # Copy as infra/live/production/audit-heartbeat.tf after applying the M11 module edits.
 
 locals {
-  m12_heartbeat_name          = "${var.cluster_name}-m12-audit-heartbeat"
-  m12_heartbeat_schedule_name = "${var.cluster_name}-m12-audit-heartbeat-schedule"
+  m12_heartbeat_name                = "${var.cluster_name}-m12-audit-heartbeat"
+  m12_heartbeat_schedule_name       = "${var.cluster_name}-m12-audit-heartbeat-schedule"
+  m12_heartbeat_fallback_topic_name = "${var.cluster_name}-m12-audit-heartbeat-fallback"
   m12_heartbeat_alarm_names = [
     "${var.cluster_name}-m12-audit-heartbeat-missing",
     "${var.cluster_name}-m12-audit-heartbeat-errors",
   ]
-  m12_primary_router_arn = "arn:aws:lambda:${var.region}:${data.aws_caller_identity.m12_current.account_id}:function:${module.audit_detection_ap_southeast_1.lambda_function_name}"
-  m12_global_router_arn  = "arn:aws:lambda:us-east-1:${data.aws_caller_identity.m12_current.account_id}:function:${module.audit_detection_us_east_1.lambda_function_name}"
+  m12_heartbeat_alarm_config = {
+    "${local.m12_heartbeat_alarm_names[0]}" = {
+      Namespace          = "AWS/Lambda"
+      MetricName         = "Invocations"
+      Statistic          = "Sum"
+      Period             = 900
+      EvaluationPeriods  = 1
+      DatapointsToAlarm  = 1
+      Threshold          = 1
+      ComparisonOperator = "LessThanThreshold"
+      TreatMissingData   = "breaching"
+      Dimensions = {
+        FunctionName = local.m12_heartbeat_name
+      }
+      OKActions               = []
+      InsufficientDataActions = []
+    }
+    "${local.m12_heartbeat_alarm_names[1]}" = {
+      Namespace          = "AWS/Lambda"
+      MetricName         = "Errors"
+      Statistic          = "Sum"
+      Period             = 300
+      EvaluationPeriods  = 1
+      DatapointsToAlarm  = 1
+      Threshold          = 1
+      ComparisonOperator = "GreaterThanOrEqualToThreshold"
+      TreatMissingData   = "notBreaching"
+      Dimensions = {
+        FunctionName = local.m12_heartbeat_name
+      }
+      OKActions               = []
+      InsufficientDataActions = []
+    }
+  }
+  m12_primary_router_arn     = "arn:aws:lambda:${var.region}:${data.aws_caller_identity.m12_current.account_id}:function:${module.audit_detection_ap_southeast_1.lambda_function_name}"
+  m12_global_router_arn      = "arn:aws:lambda:us-east-1:${data.aws_caller_identity.m12_current.account_id}:function:${module.audit_detection_us_east_1.lambda_function_name}"
+  m12_heartbeat_function_arn = "arn:aws:lambda:${var.region}:${data.aws_caller_identity.m12_current.account_id}:function:${local.m12_heartbeat_name}"
   m12_primary_rules = {
     for key, rule in local.audit_detection_regional_event_rules :
     "${var.cluster_name}-audit-detection-${var.region}-${key}" => {
@@ -28,6 +64,109 @@ locals {
 }
 
 data "aws_caller_identity" "m12_current" {}
+
+# A dedicated same-region fallback prevents the heartbeat alarms from depending
+# only on the primary M11 topic. The cross-region M11 topic is used directly by
+# the heartbeat Lambda, not as a CloudWatch alarm action.
+resource "aws_sns_topic" "m12_heartbeat_fallback" {
+  name = local.m12_heartbeat_fallback_topic_name
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+data "aws_iam_policy_document" "m12_heartbeat_fallback" {
+  statement {
+    sid       = "AllowAccountManagement"
+    actions   = ["sns:*"]
+    resources = [aws_sns_topic.m12_heartbeat_fallback.arn]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.m12_current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid       = "AllowCloudWatchAlarmPublish"
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.m12_heartbeat_fallback.arn]
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudwatch.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.m12_current.account_id]
+    }
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:cloudwatch:${var.region}:${data.aws_caller_identity.m12_current.account_id}:alarm:${var.cluster_name}-m12-audit-heartbeat-*"]
+    }
+  }
+}
+
+resource "aws_sns_topic_policy" "m12_heartbeat_fallback" {
+  arn    = aws_sns_topic.m12_heartbeat_fallback.arn
+  policy = data.aws_iam_policy_document.m12_heartbeat_fallback.json
+}
+
+# The existing M11 primary topic has no CloudWatch service-principal policy.
+# Add one in the production root so the new alarms can publish to it.
+data "aws_iam_policy_document" "m12_primary_alarm_topic" {
+  statement {
+    sid       = "AllowAccountManagement"
+    actions   = ["sns:*"]
+    resources = [module.audit_detection_ap_southeast_1.sns_topic_arn]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.m12_current.account_id}:root"]
+    }
+  }
+
+  statement {
+    sid       = "AllowCloudWatchAlarmPublish"
+    actions   = ["sns:Publish"]
+    resources = [module.audit_detection_ap_southeast_1.sns_topic_arn]
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudwatch.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.m12_current.account_id]
+    }
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = ["arn:aws:cloudwatch:${var.region}:${data.aws_caller_identity.m12_current.account_id}:alarm:${var.cluster_name}-m12-audit-heartbeat-*"]
+    }
+  }
+}
+
+resource "aws_sns_topic_policy" "m12_primary_alarm_topic" {
+  arn    = module.audit_detection_ap_southeast_1.sns_topic_arn
+  policy = data.aws_iam_policy_document.m12_primary_alarm_topic.json
+}
+
+resource "aws_sns_topic_subscription" "m12_heartbeat_fallback_email" {
+  for_each = toset(local.audit_detection_email_subscriptions)
+
+  topic_arn = aws_sns_topic.m12_heartbeat_fallback.arn
+  protocol  = "email"
+  endpoint  = each.value
+}
 
 data "archive_file" "m12_audit_heartbeat" {
   type        = "zip"
@@ -61,6 +200,7 @@ data "aws_iam_policy_document" "m12_audit_heartbeat" {
       "events:DescribeRule",
       "events:ListTargetsByRule",
       "lambda:GetFunctionConfiguration",
+      "lambda:GetFunctionConcurrency",
       "cloudwatch:DescribeAlarms",
       "s3:GetBucketEncryption",
       "s3:GetBucketLifecycleConfiguration",
@@ -77,9 +217,12 @@ data "aws_iam_policy_document" "m12_audit_heartbeat" {
   }
 
   statement {
-    sid       = "PublishAuditAlert"
-    actions   = ["sns:Publish"]
-    resources = [module.audit_detection_ap_southeast_1.sns_topic_arn]
+    sid     = "PublishAuditAlert"
+    actions = ["sns:Publish"]
+    resources = [
+      module.audit_detection_ap_southeast_1.sns_topic_arn,
+      module.audit_detection_us_east_1.sns_topic_arn,
+    ]
   }
 
   statement {
@@ -115,26 +258,33 @@ resource "aws_lambda_function" "m12_audit_heartbeat" {
 
   environment {
     variables = {
-      TRAIL_NAME                      = module.audit_detection_ap_southeast_1.trail_name
-      AUDIT_BUCKET_NAME               = module.audit_detection_ap_southeast_1.trail_bucket_name
-      ALERT_TOPIC_ARN                 = module.audit_detection_ap_southeast_1.sns_topic_arn
-      GLOBAL_ALERT_TOPIC_ARN          = module.audit_detection_us_east_1.sns_topic_arn
-      PRIMARY_REGION                  = var.region
-      GLOBAL_REGION                   = "us-east-1"
-      PRIMARY_RULES_JSON              = jsonencode(local.m12_primary_rules)
-      GLOBAL_RULES_JSON               = jsonencode(local.m12_global_rules)
-      PRIMARY_ROUTER_ARN              = local.m12_primary_router_arn
-      GLOBAL_ROUTER_ARN               = local.m12_global_router_arn
-      HEARTBEAT_SCHEDULE_RULE_NAME    = local.m12_heartbeat_schedule_name
-      HEARTBEAT_FUNCTION_ARN          = aws_lambda_function.m12_audit_heartbeat.arn
-      HEARTBEAT_ALARM_NAMES_JSON      = jsonencode(local.m12_heartbeat_alarm_names)
+      TRAIL_NAME                   = module.audit_detection_ap_southeast_1.trail_name
+      AUDIT_BUCKET_NAME            = module.audit_detection_ap_southeast_1.trail_bucket_name
+      ALERT_TOPIC_ARN              = module.audit_detection_ap_southeast_1.sns_topic_arn
+      FALLBACK_ALERT_TOPIC_ARN     = aws_sns_topic.m12_heartbeat_fallback.arn
+      GLOBAL_ALERT_TOPIC_ARN       = module.audit_detection_us_east_1.sns_topic_arn
+      PRIMARY_REGION               = var.region
+      GLOBAL_REGION                = "us-east-1"
+      PRIMARY_RULES_JSON           = jsonencode(local.m12_primary_rules)
+      GLOBAL_RULES_JSON            = jsonencode(local.m12_global_rules)
+      PRIMARY_ROUTER_ARN           = local.m12_primary_router_arn
+      GLOBAL_ROUTER_ARN            = local.m12_global_router_arn
+      HEARTBEAT_SCHEDULE_RULE_NAME = local.m12_heartbeat_schedule_name
+      HEARTBEAT_FUNCTION_ARN       = local.m12_heartbeat_function_arn
+      HEARTBEAT_ALARM_NAMES_JSON   = jsonencode(local.m12_heartbeat_alarm_names)
+      HEARTBEAT_ALARM_CONFIG_JSON  = jsonencode(local.m12_heartbeat_alarm_config)
+      HEARTBEAT_ALARM_ACTION_ARNS_JSON = jsonencode([
+        module.audit_detection_ap_southeast_1.sns_topic_arn,
+        aws_sns_topic.m12_heartbeat_fallback.arn,
+      ])
+      HEARTBEAT_ALARM_SOURCE_ARN_PATTERN   = "arn:aws:cloudwatch:${var.region}:${data.aws_caller_identity.m12_current.account_id}:alarm:${var.cluster_name}-m12-audit-heartbeat-*"
       EXPECTED_SUBSCRIPTION_ENDPOINTS_JSON = jsonencode(local.audit_detection_email_subscriptions)
-      S3_DATA_EVENT_ARNS_JSON         = jsonencode(var.audit_detection_s3_data_event_arns)
-      MAX_LOG_DELIVERY_AGE_MINUTES    = "20"
-      MAX_DIGEST_DELIVERY_AGE_MINUTES = "90"
-      REQUIRED_RETENTION_DAYS         = "365"
-      REQUIRED_LIFECYCLE_DAYS         = "400"
-      EKS_CLUSTER_NAME                = var.cluster_name
+      S3_DATA_EVENT_ARNS_JSON              = jsonencode(var.audit_detection_s3_data_event_arns)
+      MAX_LOG_DELIVERY_AGE_MINUTES         = "20"
+      MAX_DIGEST_DELIVERY_AGE_MINUTES      = "90"
+      REQUIRED_RETENTION_DAYS              = "365"
+      REQUIRED_LIFECYCLE_DAYS              = "400"
+      EKS_CLUSTER_NAME                     = var.cluster_name
     }
   }
 
@@ -172,14 +322,23 @@ resource "aws_cloudwatch_metric_alarm" "m12_audit_heartbeat_missing" {
   statistic           = "Sum"
   period              = 900
   evaluation_periods  = 1
+  datapoints_to_alarm = 1
   threshold           = 1
   comparison_operator = "LessThanThreshold"
   treat_missing_data  = "breaching"
-  alarm_actions       = [module.audit_detection_ap_southeast_1.sns_topic_arn]
+  alarm_actions = [
+    module.audit_detection_ap_southeast_1.sns_topic_arn,
+    aws_sns_topic.m12_heartbeat_fallback.arn,
+  ]
 
   dimensions = {
     FunctionName = aws_lambda_function.m12_audit_heartbeat.function_name
   }
+
+  depends_on = [
+    aws_sns_topic_policy.m12_primary_alarm_topic,
+    aws_sns_topic_policy.m12_heartbeat_fallback,
+  ]
 }
 
 resource "aws_cloudwatch_metric_alarm" "m12_audit_heartbeat_errors" {
@@ -189,14 +348,23 @@ resource "aws_cloudwatch_metric_alarm" "m12_audit_heartbeat_errors" {
   statistic           = "Sum"
   period              = 300
   evaluation_periods  = 1
+  datapoints_to_alarm = 1
   threshold           = 1
   comparison_operator = "GreaterThanOrEqualToThreshold"
   treat_missing_data  = "notBreaching"
-  alarm_actions       = [module.audit_detection_ap_southeast_1.sns_topic_arn]
+  alarm_actions = [
+    module.audit_detection_ap_southeast_1.sns_topic_arn,
+    aws_sns_topic.m12_heartbeat_fallback.arn,
+  ]
 
   dimensions = {
     FunctionName = aws_lambda_function.m12_audit_heartbeat.function_name
   }
+
+  depends_on = [
+    aws_sns_topic_policy.m12_primary_alarm_topic,
+    aws_sns_topic_policy.m12_heartbeat_fallback,
+  ]
 }
 
 output "m12_audit_heartbeat_function_arn" {
@@ -212,4 +380,8 @@ output "m12_audit_heartbeat_alarm_arns" {
     aws_cloudwatch_metric_alarm.m12_audit_heartbeat_missing.arn,
     aws_cloudwatch_metric_alarm.m12_audit_heartbeat_errors.arn,
   ]
+}
+
+output "m12_heartbeat_fallback_topic_arn" {
+  value = aws_sns_topic.m12_heartbeat_fallback.arn
 }

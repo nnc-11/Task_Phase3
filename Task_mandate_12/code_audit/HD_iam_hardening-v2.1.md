@@ -5,8 +5,8 @@
 ## 1. Dependency
 
 - `m12-iam-scope-v2.0.md` không còn effective-admin `Unknown`;
-- exact trail/bucket, 2 topics, toàn bộ confirmed subscription ARNs, 9+ EventBridge rule ARNs, 3 Lambda ARNs, 3 log-group ARNs và 2 heartbeat alarm ARNs;
-- named MFA security owner và root residual-risk acceptance;
+- exact trail/bucket, 3 topics (primary/global/heartbeat-fallback), toàn bộ confirmed subscription ARNs, 9+ EventBridge rule ARNs, 3 Lambda ARNs, 3 log-group ARNs và 2 heartbeat alarm ARNs;
+- named IAM security-owner user đã bật MFA và root residual-risk acceptance;
 - mapping principal → Terraform state/root → owner → baseline → rollback;
 - audit foundation đã ghi được mọi IAM change trong archive sau cutover.
 
@@ -63,12 +63,12 @@ infra/live/iam/mandate-12/audit_access/
 Tạo `backend.hcl` với state key riêng rồi chạy `terraform init -backend-config=backend.hcl`. Điền:
 
 - M11/M12 audit bucket/trail ARN;
-- hai M11 SNS topic ARNs;
+- ba SNS topic ARNs: primary M11, global M11 và heartbeat-fallback;
 - tối thiểu 9 rule ARNs: primary `g1/g4/g5/g6/g7`, global `g2/g3/g8`, heartbeat schedule;
 - đúng 3 Lambda, 3 log groups và 2 heartbeat alarm ARNs;
-- named MFA security-owner principals.
+- named MFA security-owner IAM user trong account `197826770971`.
 
-Plan chỉ được tạo audit-admin, break-glass và assume policies. Apply rồi test assume/read; break-glass không dùng daily ops.
+Plan chỉ được tạo audit-admin, break-glass và assume policies. Sau apply, lấy output `security_owner_assume_audit_policy_arn`; root đang sở hữu named user phải gắn policy này vào đúng user bằng một saved plan/change riêng được review. Không attach tay nếu user thuộc Terraform state khác. Chỉ test assume/read sau khi user có MFA và policy đã gắn; break-glass không dùng daily ops.
 
 ## 4. Lấy input và render boundary bằng Terraform
 
@@ -85,9 +85,10 @@ aws logs describe-log-groups --log-group-name-prefix /aws/lambda/techx-corp-tf3 
 aws cloudwatch describe-alarms --alarm-name-prefix techx-corp-tf3-m12-audit-heartbeat --region ap-southeast-1 --query "MetricAlarms[].AlarmArn"
 aws sns list-subscriptions-by-topic --topic-arn "<primary-topic>" --region ap-southeast-1
 aws sns list-subscriptions-by-topic --topic-arn "<global-topic>" --region us-east-1
+aws sns list-subscriptions-by-topic --topic-arn "<heartbeat-fallback-topic>" --region ap-southeast-1
 ```
 
-Ràng buộc: không dùng `PendingConfirmation`; bỏ suffix `:*` khỏi log-group ARN; 3 Lambda phải là primary router, global router, heartbeat; audit roles lấy từ output `audit_access`. `approved_assume_role_arns=[]` là strict default. Chỉ thêm exact non-audit role sau khi review trust/OIDC và chứng minh workload cần assume role đó.
+Ràng buộc: không dùng `PendingConfirmation`; mỗi topic phải có ít nhất một confirmed subscription ARN; bỏ suffix `:*` khỏi log-group ARN; 3 Lambda phải là primary router, global router, heartbeat; audit roles lấy từ output `audit_access`. `approved_assume_role_arns=[]` là strict default. Chỉ thêm exact non-audit role sau khi review trust/OIDC và chứng minh workload cần assume role đó.
 
 Chạy `terraform fmt/init/validate/plan`; xem JSON policy trong plan. Với target chỉ thuộc owner roots, giữ `enable_iam_change_executor=false`, `target_*=[]`, `trusted_change_owner_arns=[]`: plan chỉ tạo managed boundary. Sau apply, dùng IAM policy validation/Access Analyzer và `simulate-principal-policy`. Audit-control/IAM-escalation actions phải `explicitDeny`; baseline cần thiết phải `allowed`.
 
@@ -112,8 +113,9 @@ Chỉ cho exact unmanaged/transferred targets:
 3. đặt `enable_iam_change_executor=true`, giữ `allow_boundary_removal=false`;
 4. đặt `target_ownership_confirmed=true` sau signed ownership evidence;
 5. plan phải tạo boundary + executor, không được sửa principal ngoài allowlist; review/apply;
-6. assume executor short-lived;
-7. executor chỉ attach chính `operator_boundary_policy_arn` output vào một identity đã duyệt; baseline, evidence, rồi mới target tiếp.
+6. lấy output `security_owner_assume_iam_change_policy_arn`; root sở hữu named MFA user gắn policy này bằng saved plan/change riêng được review;
+7. assume executor short-lived;
+8. executor chỉ attach chính `operator_boundary_policy_arn` output vào một identity đã duyệt; baseline, evidence, rồi mới target tiếp.
 
 Người deploy phải assume executor bằng phiên ngắn có MFA và dùng profile/session đó, không dùng credential admin hiện tại. Với từng target đã ký ownership, chạy đúng một lệnh rồi đọc lại trạng thái:
 
@@ -156,6 +158,6 @@ Rollback từng identity tại root sở hữu. Với executor, `allow_boundary_
 
 ---
 
-**Phiên bản:** v2.0
+**Phiên bản:** v2.1
 **Cập nhật:** 21/07/2026
-**Trạng thái:** BLOCKED — pending foundation health, MFA, full effective-admin inventory và IAM ownership
+**Trạng thái:** HANDOFF READY / EXECUTION BLOCKED — pending foundation health, MFA, full effective-admin inventory và IAM ownership

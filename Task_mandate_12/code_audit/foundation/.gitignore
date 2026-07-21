@@ -3,3 +3,5 @@ backend.hcl
 terraform.tfvars
 *.tfplan
 tfplan.txt
+__pycache__/
+*.pyc

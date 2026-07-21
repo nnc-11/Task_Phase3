@@ -38,12 +38,14 @@ heartbeat_alarm_arns = [
 alert_topic_arns = [
   "arn:aws:sns:ap-southeast-1:197826770971:REPLACE_PRIMARY_TOPIC",
   "arn:aws:sns:us-east-1:197826770971:REPLACE_GLOBAL_TOPIC",
+  "arn:aws:sns:ap-southeast-1:197826770971:REPLACE_HEARTBEAT_FALLBACK_TOPIC",
 ]
 
-# Include every required confirmed subscription from both topics; never use PendingConfirmation.
+# Include every required confirmed subscription from all three topics; never use PendingConfirmation.
 alert_subscription_arns = [
   "arn:aws:sns:ap-southeast-1:197826770971:REPLACE_PRIMARY_TOPIC:REPLACE_CONFIRMED_UUID",
   "arn:aws:sns:us-east-1:197826770971:REPLACE_GLOBAL_TOPIC:REPLACE_CONFIRMED_UUID",
+  "arn:aws:sns:ap-southeast-1:197826770971:REPLACE_HEARTBEAT_FALLBACK_TOPIC:REPLACE_CONFIRMED_UUID",
 ]
 
 audit_access_role_arns = [

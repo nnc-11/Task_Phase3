@@ -5,22 +5,22 @@ Bộ chuẩn bị cho TF3 trên AWS account `197826770971`. Repository product c
 ## Bộ v2 hiện hành
 
 1. [m12-gap-v2.0.md](m12-gap-v2.0.md) — baseline hạ tầng mới và gap với M11.
-2. [m12-coverage-v2.0.md](m12-coverage-v2.0.md) — inventory/coverage bắt buộc.
+2. [m12-coverage-v2.1.md](m12-coverage-v2.1.md) — inventory/coverage bắt buộc.
 3. [m12-iam-scope-v2.0.md](m12-iam-scope-v2.0.md) — IAM ownership và migration.
 4. [m12-phoi-hop-cd01-v2.0.md](m12-phoi-hop-cd01-v2.0.md) — input/output phối hợp CD01.
-5. [m12-solution-v2.0.md](m12-solution-v2.0.md) — kiến trúc và trade-off đã chọn.
-6. [m12-runbook-v2.0.md](m12-runbook-v2.0.md) — phase/gate/rollback.
-7. [m12-tests-v2.0.md](m12-tests-v2.0.md) — mentor tests và evidence.
-8. [m12-plan-v2.0.md](m12-plan-v2.0.md) — kế hoạch thực thi và gate.
-9. [code_audit/HD_audit_foundation-v2.0.md](code_audit/HD_audit_foundation-v2.0.md) — nâng cấp trail M11 và heartbeat step-by-step.
-10. [code_audit/HD_iam_hardening-v2.0.md](code_audit/HD_iam_hardening-v2.0.md) — IAM hardening step-by-step.
+5. [m12-solution-v2.2.md](m12-solution-v2.2.md) — kiến trúc và trade-off đã chọn.
+6. [m12-runbook-v2.2.md](m12-runbook-v2.2.md) — phase/gate/rollback.
+7. [m12-tests-v2.2.md](m12-tests-v2.2.md) — mentor tests và evidence.
+8. [m12-plan-v2.2.md](m12-plan-v2.2.md) — kế hoạch thực thi và gate.
+9. [code_audit/HD_audit_foundation-v2.2.md](code_audit/HD_audit_foundation-v2.2.md) — nâng cấp trail M11 và heartbeat step-by-step.
+10. [code_audit/HD_iam_hardening-v2.1.md](code_audit/HD_iam_hardening-v2.1.md) — IAM hardening step-by-step.
 
-Bộ tài liệu triển khai cũ `v1.x` đã được loại bỏ để tránh dùng nhầm; chỉ bộ `v2.0` hiện hành được dùng cho review và chuẩn bị deploy.
+Bộ `v1.x` và các file `v2.0` đã có bản thay thế `v2.1` đều đã được loại bỏ. Các file còn mang `v2.0` là tài liệu hiện hành chưa có bản thay thế, không phải bản trùng cần xóa.
 
 ## Quyết định hiện tại
 
 - Tận dụng trail/archive/alert plane M11; nâng cấp in-place tại production root.
-- Không tạo trail/bucket/SNS M12 thứ hai.
+- Không tạo trail/bucket/router M12 trùng M11; chỉ thêm một SNS heartbeat-fallback cùng region cho alarm.
 - IAM hardening làm sau foundation, tại đúng Terraform root sở hữu principal.
 - Discovery AWS live ngày 21/07/2026 đã xác nhận M11 đang chạy; vẫn phải revalidate ngay trước plan/change window.
 
@@ -39,6 +39,6 @@ Bộ tài liệu triển khai cũ `v1.x` đã được loại bỏ để tránh 
 
 ---
 
-**Phiên bản:** v2.0
+**Phiên bản:** v2.2
 **Cập nhật:** 21/07/2026
-**Trạng thái:** LIVE DISCOVERY COMPLETE / READY FOR REVIEW — chưa được phép deploy
+**Trạng thái:** HANDOFF READY / NOT APPROVED FOR APPLY — live dependency và saved-plan gate phải được hoàn tất khi có quyền deploy

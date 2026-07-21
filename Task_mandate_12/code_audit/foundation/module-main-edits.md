@@ -31,6 +31,10 @@ lifecycle {
 }
 ```
 
+Lifecycle 400 ngày áp dụng cho mọi object khớp rule, gồm cả object hiện có chưa bị xóa và object mới. Trước apply phải lưu inventory dung lượng/tuổi object và có cost approval. Object đã hết hạn và bị xóa trước change không thể khôi phục.
+
+Không thêm transition storage class trong cutover đầu tiên. `GLACIER_IR` sau 90 ngày chỉ là tối ưu tùy chọn sau khi có thống kê kích thước object, phí transition/retrieval và thời gian lưu tối thiểu. Heartbeat đã được viết để bỏ qua rule chỉ có `Transition` khi kiểm tra `Expiration`, nhưng mọi thay đổi tiering vẫn phải là plan riêng được phê duyệt.
+
 ## 2. CloudTrail selectors
 
 Trong `aws_cloudtrail.audit`, xóa block `event_selector` cũ và thay bằng:
@@ -127,7 +131,7 @@ Trong `local.audit_detection_regional_event_rules`, thêm group:
 g7-audit-controls = {
   description = "Group 7: detect mutation of the M11/M12 alert and heartbeat controls."
   sources = [
-    "aws.events", "aws.sns", "aws.lambda", "aws.cloudwatch", "aws.s3"
+    "aws.events", "aws.sns", "aws.lambda", "aws.monitoring", "aws.s3"
   ]
   event_sources = [
     "events.amazonaws.com", "sns.amazonaws.com", "lambda.amazonaws.com",
@@ -135,17 +139,22 @@ g7-audit-controls = {
   ]
   event_names = [
     "DisableRule", "DeleteRule", "PutRule", "RemoveTargets", "PutTargets",
-    "DeleteTopic", "SetTopicAttributes", "Unsubscribe",
+    "AddPermission", "RemovePermission", "DeleteTopic", "SetTopicAttributes",
+    "Subscribe", "ConfirmSubscription", "SetSubscriptionAttributes", "Unsubscribe",
     "DeleteFunction", "UpdateFunctionCode", "UpdateFunctionConfiguration",
+    "PutFunctionConcurrency", "DeleteFunctionConcurrency",
     "DeleteAlarms", "DisableAlarmActions", "PutMetricAlarm",
     "PutBucketPolicy", "DeleteBucketPolicy", "PutBucketVersioning",
     "PutObjectLockConfiguration", "PutBucketLifecycleConfiguration",
-    "DeleteBucketLifecycle", "DeleteBucketEncryption", "DeletePublicAccessBlock"
+    "DeleteBucketLifecycle", "PutBucketEncryption", "DeleteBucketEncryption",
+    "PutPublicAccessBlock", "DeletePublicAccessBlock"
   ]
 }
 ```
 
 `lambda-router-edits.md` phải được áp dụng trong cùng PR, nếu không router sẽ nhận rồi bỏ qua group mới.
+
+Với CloudWatch API qua CloudTrail, cặp đúng là `source = aws.monitoring` và `detail.eventSource = monitoring.amazonaws.com`. Không đổi lại thành `aws.cloudwatch`; heartbeat có thêm invariant kiểm tra cặp source/eventSource để cấu hình Terraform sai không thể tự xác nhận PASS.
 
 Trong `local.audit_detection_global_event_rules`, thêm group IAM/OIDC anti-tamper sau. Group này chạy ở `us-east-1` vì IAM là global service:
 

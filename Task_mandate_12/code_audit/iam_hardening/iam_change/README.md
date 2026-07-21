@@ -2,6 +2,8 @@
 
 Root này luôn tạo managed operator boundary từ exact audit-resource ARNs. Mặc định `enable_iam_change_executor=false`: chỉ tạo boundary để các owner roots tham chiếu. Chỉ bật executor MFA cho exact user/role đã chuyển ownership hoặc không thuộc state khác.
 
+Input alert path bắt buộc có đúng 3 topic ARNs (primary/global/heartbeat-fallback) và ít nhất một confirmed subscription ARN thuộc từng topic. Boundary deny mutation trên cả topic lẫn subscription.
+
 ## Gate cứng
 
 Khi `enable_iam_change_executor=true`, `target_ownership_confirmed=false` làm plan/apply fail. Chỉ đặt `true` khi:
@@ -18,6 +20,6 @@ Các role trên phải harden tại root sở hữu. `allow_boundary_removal=tru
 
 ---
 
-**Phiên bản:** v2.0
+**Phiên bản:** v2.1
 **Cập nhật:** 21/07/2026
 **Trạng thái:** BOUNDARY READY FOR REVIEW / EXECUTOR BLOCKED pending ownership confirmation

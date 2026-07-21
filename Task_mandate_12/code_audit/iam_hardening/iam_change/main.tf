@@ -142,6 +142,14 @@ resource "aws_iam_policy" "operator_boundary" {
   }
 
   lifecycle {
+    precondition {
+      condition = alltrue([
+        for topic_arn in var.alert_topic_arns : anytrue([
+          for subscription_arn in var.alert_subscription_arns : startswith(subscription_arn, "${topic_arn}:")
+        ])
+      ])
+      error_message = "Each protected SNS topic must have at least one confirmed subscription ARN."
+    }
     prevent_destroy = true
   }
 }

@@ -7,7 +7,8 @@ audit_trail_arn  = "arn:aws:cloudtrail:ap-southeast-1:197826770971:trail/REPLACE
 
 alert_topic_arns = [
   "arn:aws:sns:ap-southeast-1:197826770971:REPLACE_WITH_alert_topic_arn",
-  "arn:aws:sns:us-east-1:197826770971:REPLACE_WITH_global_alert_topic_arn"
+  "arn:aws:sns:us-east-1:197826770971:REPLACE_WITH_global_alert_topic_arn",
+  "arn:aws:sns:ap-southeast-1:197826770971:REPLACE_WITH_heartbeat_fallback_topic_arn"
 ]
 
 audit_rule_arns = [

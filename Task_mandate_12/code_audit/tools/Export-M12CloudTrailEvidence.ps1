@@ -4,9 +4,10 @@ Exports redacted Mandate 12 evidence from one downloaded CloudTrail .json.gz fil
 
 .DESCRIPTION
 The script works only on a local CloudTrail log file already copied from the
-Object-Lock audit bucket. It does not call AWS and never outputs request bodies
-or secret values. It selects the actor/session, time, API, resource, request ID
-and error result required for Mandate 12 evidence.
+Object-Lock audit bucket. It does not call AWS and never exports unrestricted
+request bodies or secret values. Access mode selects actor/session, time, API,
+resource, request ID and result. ConfigChange mode additionally exports only an
+explicit allowlist of non-secret configuration fields for the thin-log test.
 
 .EXAMPLE
 .\Export-M12CloudTrailEvidence.ps1 `
@@ -26,6 +27,9 @@ param(
     [string[]]$EventName,
 
     [string]$ResourceContains,
+
+    [ValidateSet('Access', 'ConfigChange')]
+    [string]$EvidenceProfile = 'Access',
 
     [Parameter(Mandatory)]
     [ValidateNotNullOrEmpty()]
@@ -54,6 +58,54 @@ function Get-OptionalProperty {
     }
 
     return $property.Value
+}
+
+function Get-ApprovedConfigParameters {
+    param(
+        [AllowNull()]
+        [object]$Request
+    )
+
+    # Never add credential, secret, token, body, payload, policy-document or
+    # object-content fields here. Expand this list only through code review.
+    $allowedFields = @(
+        'actionsEnabled',
+        'advancedEventSelectors',
+        'alarmActions',
+        'alarmName',
+        'comparisonOperator',
+        'datapointsToAlarm',
+        'dimensions',
+        'enableLogFileValidation',
+        'evaluationPeriods',
+        'eventPattern',
+        'eventSelectors',
+        'includeGlobalServiceEvents',
+        'isMultiRegionTrail',
+        'metricName',
+        'name',
+        'namespace',
+        'period',
+        'readWriteType',
+        'scheduleExpression',
+        'state',
+        'statistic',
+        'threshold',
+        'trailName',
+        'treatMissingData'
+    )
+
+    $approved = [ordered]@{}
+    foreach ($field in $allowedFields) {
+        $value = Get-OptionalProperty -Object $Request -Name $field
+        if ($null -ne $value) {
+            $approved[$field] = $value
+        }
+    }
+    if ($approved.Count -eq 0) {
+        return $null
+    }
+    return [PSCustomObject]$approved
 }
 
 if (-not (Test-Path -LiteralPath $LogFile -PathType Leaf)) {
@@ -94,9 +146,10 @@ $matches = foreach ($record in @($cloudTrailDocument.Records)) {
         continue
     }
 
+    $recordResources = Get-OptionalProperty -Object $record -Name 'resources'
     $resourceArns = @(
-        $record.resources |
-            ForEach-Object { $_.ARN } |
+        $recordResources |
+            ForEach-Object { Get-OptionalProperty -Object $_ -Name 'ARN' } |
             Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
     )
 
@@ -115,10 +168,17 @@ $matches = foreach ($record in @($cloudTrailDocument.Records)) {
         continue
     }
 
-    # Deliberately whitelist metadata only. Do not export request bodies or secret values.
+    # Base output is metadata-only; ConfigChange adds only the reviewed allowlist above.
     $userIdentity = Get-OptionalProperty -Object $record -Name 'userIdentity'
     $sessionContext = Get-OptionalProperty -Object $userIdentity -Name 'sessionContext'
     $sessionIssuer = Get-OptionalProperty -Object $sessionContext -Name 'sessionIssuer'
+    $approvedChangeParameters = $null
+    if ($EvidenceProfile -eq 'ConfigChange') {
+        $approvedChangeParameters = Get-ApprovedConfigParameters -Request $request
+        if ($null -eq $approvedChangeParameters) {
+            continue
+        }
+    }
 
     [PSCustomObject]@{
         eventTime       = $record.eventTime
@@ -126,15 +186,16 @@ $matches = foreach ($record in @($cloudTrailDocument.Records)) {
         eventSource     = $record.eventSource
         awsRegion       = $record.awsRegion
         eventID         = $record.eventID
-        requestID       = $record.requestID
-        errorCode       = $record.errorCode
-        errorMessage    = $record.errorMessage
+        requestID       = Get-OptionalProperty -Object $record -Name 'requestID'
+        errorCode       = Get-OptionalProperty -Object $record -Name 'errorCode'
+        errorMessage    = Get-OptionalProperty -Object $record -Name 'errorMessage'
         principalArn    = Get-OptionalProperty -Object $userIdentity -Name 'arn'
         principalId     = Get-OptionalProperty -Object $userIdentity -Name 'principalId'
         sessionIssuer   = Get-OptionalProperty -Object $sessionIssuer -Name 'arn'
-        sourceIPAddress = $record.sourceIPAddress
+        sourceIPAddress = Get-OptionalProperty -Object $record -Name 'sourceIPAddress'
         resourceArns    = $resourceArns
         requestTarget   = $requestTargets
+        changeParameters = $approvedChangeParameters
     }
 }
 

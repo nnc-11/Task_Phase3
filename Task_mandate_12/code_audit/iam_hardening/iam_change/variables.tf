@@ -75,20 +75,20 @@ variable "heartbeat_alarm_arns" {
 }
 
 variable "alert_topic_arns" {
-  description = "The primary and global M11 alert topic ARNs."
+  description = "Exactly the primary, global and same-region heartbeat-fallback alert topic ARNs."
   type        = set(string)
   validation {
-    condition     = length(var.alert_topic_arns) == 2 && alltrue([for arn in var.alert_topic_arns : can(regex("^arn:aws:sns:[a-z0-9-]+:197826770971:.+$", arn))])
-    error_message = "alert_topic_arns must contain exactly two topic ARNs."
+    condition     = length(var.alert_topic_arns) == 3 && alltrue([for arn in var.alert_topic_arns : can(regex("^arn:aws:sns:[a-z0-9-]+:197826770971:.+$", arn))])
+    error_message = "alert_topic_arns must contain exactly three topic ARNs: primary, global and heartbeat fallback."
   }
 }
 
 variable "alert_subscription_arns" {
-  description = "Every confirmed required subscription ARN on both M11 topics; PendingConfirmation is invalid."
+  description = "Every confirmed required subscription ARN on primary, global and heartbeat-fallback topics; PendingConfirmation is invalid."
   type        = set(string)
   validation {
-    condition     = length(var.alert_subscription_arns) > 0 && alltrue([for arn in var.alert_subscription_arns : can(regex("^arn:aws:sns:[a-z0-9-]+:197826770971:.+:[0-9a-f-]+$", arn))])
-    error_message = "alert_subscription_arns must contain only confirmed SNS subscription ARNs."
+    condition     = length(var.alert_subscription_arns) >= 3 && alltrue([for arn in var.alert_subscription_arns : can(regex("^arn:aws:sns:[a-z0-9-]+:197826770971:.+:[0-9a-f-]+$", arn))])
+    error_message = "alert_subscription_arns must contain at least one confirmed subscription for each of the three protected topics."
   }
 }
 
@@ -134,13 +134,13 @@ variable "target_role_arns" {
 }
 
 variable "trusted_change_owner_arns" {
-  description = "Named MFA-capable security-owner IAM users/roles allowed to assume the executor; root is deliberately excluded."
+  description = "Named MFA-capable IAM users allowed to assume the executor; roles/root are excluded because this trust enforces aws:MultiFactorAuthPresent."
   type        = set(string)
   default     = []
 
   validation {
-    condition     = alltrue([for arn in var.trusted_change_owner_arns : can(regex("^arn:aws:iam::197826770971:(user|role)/.+$", arn))])
-    error_message = "trusted_change_owner_arns may contain only named IAM user/role ARNs in account 197826770971, never root."
+    condition     = alltrue([for arn in var.trusted_change_owner_arns : can(regex("^arn:aws:iam::197826770971:user/.+$", arn))])
+    error_message = "trusted_change_owner_arns may contain only named IAM user ARNs in account 197826770971."
   }
 }
 

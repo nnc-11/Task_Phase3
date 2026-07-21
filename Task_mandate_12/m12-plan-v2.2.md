@@ -1,8 +1,10 @@
 # Mandate 12 — Kế hoạch triển khai Audit Anti-Defeat
 
-> **TF3 · AWS account `197826770971` · `ap-southeast-1`**  
-> **Phiên bản:** v2.0 · **Cập nhật:** 21/07/2026  
-> **Trạng thái:** `READY FOR APPROVAL — NOT APPROVED FOR APPLY`
+> **TF3 · AWS account `197826770971` · `ap-southeast-1`**
+>
+> **Phiên bản:** v2.2 · **Cập nhật:** 21/07/2026
+>
+> **Trạng thái:** `HANDOFF READY / NOT APPROVED FOR APPLY`
 
 > [!CAUTION]
 > Tài liệu này là kế hoạch xin phê duyệt. Không chạy `terraform apply`, thay đổi IAM, tạo canary hoặc attack test trước khi có change window, reviewer và người chịu trách nhiệm phê duyệt.
@@ -19,19 +21,20 @@ Mandate 12 yêu cầu chứng minh audit trail:
 
 Phương án được chọn là **nâng cấp in-place nền Mandate 11**, không tạo trail thứ hai:
 
-1. Giữ nguyên CloudTrail ARN, audit bucket và hai SNS topics của M11.
+1. Giữ nguyên CloudTrail ARN, audit bucket và hai SNS topics của M11; thêm đúng một SNS heartbeat-fallback cùng region cho alarm, không tạo alert plane thay thế.
 2. Thêm S3 object data events cho exact bucket/prefix đã được owner duyệt; giữ management read/write events.
 3. Nâng default Object Lock của bucket hiện hữu lên `COMPLIANCE 365 ngày` cho object mới; lifecycle `400 ngày`.
 4. Sửa router để critical event không bị automation allowlist hoặc suppression che mất.
 5. Thêm regional g7, global g8 và heartbeat 5 phút để phát hiện audit/IAM tamper hoặc blind window.
 6. IAM hardening là change riêng, thực hiện tại đúng Terraform root sở hữu principal.
 
-**Kết luận:** giải pháp khả thi nhưng chưa được phép deploy. Bốn blocker phải đóng trước plan/apply:
+**Kết luận:** giải pháp khả thi nhưng chưa được phép deploy. Năm blocker phải đóng trước plan/apply:
 
 - exact S3 coverage và owner approval;
 - SNS pending confirmations;
 - MFA hoặc approved deployment role;
 - CD01 xác nhận state ownership và change window.
+- change ID có Git SHA, principal, UTC window, expected critical actions và người trực; bổ sung saved-plan hash trước approval apply.
 
 ## 2. Baseline AWS live đã xác nhận
 
@@ -42,7 +45,7 @@ Discovery ngày 21/07/2026 chỉ sử dụng API `list/get/describe`. Không đ�
 | CloudTrail | `techx-corp-tf3-audit-detection-ap-southeast-1-trail`; multi-region; `IsLogging=true`; validation bật | Đủ nền, chưa đủ coverage |
 | Event selectors | Management Read/Write=`All`; `DataResources=[]` | Thiếu S3 `GetObject` data events |
 | Audit bucket | `techx-corp-tf3-audit-trail-ap-southeast-1-197826770971`; Versioning; SSE-S3; Governance 14 ngày; lifecycle 30 ngày | Cần nâng default cho object mới |
-| Alert plane | 6 EventBridge rules enabled; 2 Lambda routers; 2 SNS topics | Tận dụng, bổ sung tamper + heartbeat |
+| Alert plane | 6 EventBridge rules enabled; 2 Lambda routers; 2 SNS topics | Tận dụng, bổ sung tamper + heartbeat; tạo fallback SNS cùng region cho alarm |
 | SNS | Primary còn 3 `PendingConfirmation`; global còn 1 | Blocker trước cutover |
 | EKS | `techx-corp-tf3` ACTIVE; `api/audit/authenticator` enabled; log retention 90 ngày | Supplemental evidence; heartbeat giám sát |
 | Sensitive inventory | 8 S3 buckets; 5 Secrets Manager secrets đã inventory metadata | Còn cần owner/classification |
@@ -63,7 +66,7 @@ Discovery ngày 21/07/2026 chỉ sử dụng API `list/get/describe`. Không đ�
 
 - Không thay đổi EKS workload, VPC/network, datastore, CloudFront, Cloudflare, ArgoCD hoặc flagd.
 - Không tạo AWS Organization/SCP hoặc cross-account archive trong phase hiện tại.
-- Không tạo CloudTrail, audit bucket hoặc SNS topic thứ hai.
+- Không tạo CloudTrail, audit bucket hoặc router trùng lặp. Chỉ tạo một SNS fallback chuyên dụng cùng region cho heartbeat alarms.
 - Không triển khai AWS Config chỉ để hoàn thành M12; nếu sponsor yêu cầu thì tách change riêng.
 - Không sửa hoặc apply production trước approval.
 
@@ -74,7 +77,7 @@ Discovery ngày 21/07/2026 chỉ sử dụng API `list/get/describe`. Không đ�
 | Không có cửa sổ mù | Boundary/least privilege; critical router không suppress; g7/g8 tamper; heartbeat 5 phút và missing-invocation alarm | Denied request + event/alert + trail vẫn logging + heartbeat PASS |
 | Đóng coverage gap | Advanced selectors gồm Management và exact S3 Object ARN; Secrets Manager reads giữ trong management events | Canary `GetObject`/`GetSecretValue` có actor, resource, UTC, request ID; không chứa secret value |
 | Toàn vẹn mật mã | CloudTrail validation tiếp tục bật; digest chain giữ tại vị trí gốc | `validate-logs` không `INVALID`/missing trong window sau cutover |
-| Giữ đủ lâu | Object mới `COMPLIANCE 365 ngày`; lifecycle 400 ngày | `GetObjectRetention` cho object sau cutover + lifecycle output + UTC cutover |
+| Giữ đủ lâu | Object mới `COMPLIANCE 365 ngày`; lifecycle 400 ngày; 12 tháng bao phủ dwell nhiều ngày/tuần và review theo quý, thêm 35 ngày đệm xử lý/export | `GetObjectRetention` cho object sau cutover + lifecycle output + UTC cutover + owner/cost approval |
 | Truy trách nhiệm | CloudTrail identity/session/source IP/user agent/request ID; EKS audit bổ sung Kubernetes context | Timeline principal → session → action → resource → kết quả |
 
 ## 5. Kiến trúc target
@@ -91,15 +94,18 @@ flowchart LR
     HB --> ARCH
     HB --> EB
     HB --> SNS
+    HB --> GSNS["M11 global SNS"]
+    ALARM["Heartbeat Missing/Errors"] --> SNS
+    ALARM --> FSNS["Same-region fallback SNS"]
 ```
 
 | Thành phần hiện hữu | Thay đổi M12 | Nguyên tắc an toàn |
 |---|---|---|
 | CloudTrail | Basic selector → advanced Management + approved S3 Data | Không đổi ARN/name; không stop logging |
 | Audit bucket | Governance 14 → Compliance 365 cho object mới; lifecycle 400 | Không tạo bucket mới; không claim hồi tố object cũ |
-| Router | Critical groups luôn alert; thêm regional group 7 và global group 8 | Automation/suppression không che anti-audit/IAM tamper |
-| EventBridge/SNS | Mở rộng rule và bảo vệ mutation | Tái sử dụng router/topics; recipient bắt buộc Confirmed |
-| Heartbeat | Lambda + schedule + Errors/Missing alarms | Phát hiện blind window ngay cả khi không có tamper event rõ |
+| Router | Critical groups `1/2/3/4/7/8` luôn alert; thêm regional group 7 và global group 8 | Automation/suppression không che anti-audit/IAM tamper |
+| EventBridge/SNS | Mở rộng rule; giữ primary/global và thêm fallback cùng region | Recipient trên cả ba topic bắt buộc Confirmed |
+| Heartbeat | Lambda publish độc lập primary/global; Errors/Missing alarms dùng primary + fallback; thêm CloudWatch publish policy giới hạn | Một SNS path lỗi không ngăn path còn lại; không dùng cross-region SNS làm alarm action |
 | IAM | Audit access + tailored boundary/least privilege | Change riêng, đúng state owner, rollout từng identity |
 
 ## 6. Dependency và gate trước triển khai
@@ -108,9 +114,10 @@ flowchart LR
 |---|---|---|
 | Caller | `aws sts get-caller-identity` | Account `197826770971`; không root; MFA/approved role |
 | State ownership | CD01/IaC owner xác nhận `infra/live/production` sở hữu M11 | Có reviewer và change window |
-| S3 coverage | [m12-coverage-v2.0.md](m12-coverage-v2.0.md) | Exact ARN kết thúc `/`; owner/classification/cost ký |
-| Alert recipients | List subscriptions trên hai topics | Không còn recipient bắt buộc pending; test receipt |
-| Retention | Security/data owner duyệt 365/400 và cutover limitation | Chấp nhận object cũ không hồi tố |
+| S3 coverage | [m12-coverage-v2.1.md](m12-coverage-v2.1.md) | Exact ARN kết thúc `/`; owner/classification/cost ký |
+| Alert recipients | List subscriptions trên hai M11 topics; fallback được tạo khi apply | M11 không còn pending trước apply; fallback phải confirm trước nghiệm thu |
+| Retention | Security/data owner duyệt 365/400 và cutover limitation | Chấp nhận Object Lock chỉ cho object mới; lifecycle 400 áp dụng cả object hiện có chưa bị xóa |
+| Change ID | Ticket ghi Git SHA, principal, UTC window, expected g7/g8 actions; bổ sung saved-plan hash | Người trực xác nhận quy trình đối chiếu CRITICAL alert, không mute/suppress |
 | IAM ownership | Map principal → Terraform root → owner → rollback | Không có target `Unknown` |
 | Plan | CI/local approved saved plan | Không replace/delete trail/bucket; không workload drift |
 
@@ -119,7 +126,7 @@ flowchart LR
 Dừng nếu xảy ra một trong các điều kiện:
 
 - S3 scope còn `TBD`;
-- SNS recipient bắt buộc còn pending;
+- M11 SNS recipient bắt buộc còn pending trước apply, hoặc fallback SNS còn pending tại post-apply gate;
 - caller sai account hoặc dùng root;
 - deployment identity không đạt MFA/role gate;
 - plan replace/delete audit resource;
@@ -130,7 +137,7 @@ Dừng nếu xảy ra một trong các điều kiện:
 | Phase | Công việc | Exit gate | Ước lượng |
 |---:|---|---|---:|
 | 0 | Revalidate live, owner/state, blocker và lưu baseline | Baseline hash + approval đầy đủ | 30–60 phút |
-| 1 | PR audit foundation: selector, retention, router g7/g8, heartbeat | Saved plan chỉ update/add audit controls | 2–4 giờ |
+| 1 | PR audit foundation: selector, retention, router g7/g8, heartbeat + fallback SNS | Saved plan chỉ update/add audit controls; change ID có plan hash | 2–4 giờ |
 | 2 | Apply approved saved plan trong change window | `IsLogging=true`; ARN/bucket không đổi | 30–60 phút |
 | 3 | Post-apply delivery/digest/retention/heartbeat | Digest bao phủ cutover; heartbeat PASS | 90–120 phút |
 | 4 | Canary `GetObject`/`GetSecretValue` và evidence | Coverage + integrity evidence pass | 60–120 phút |
@@ -139,7 +146,7 @@ Dừng nếu xảy ra một trong các điều kiện:
 
 ## 8. Phase Audit Foundation
 
-Thực hiện chi tiết theo [HD_audit_foundation-v2.0.md](code_audit/HD_audit_foundation-v2.0.md).
+Thực hiện chi tiết theo [HD_audit_foundation-v2.2.md](code_audit/HD_audit_foundation-v2.2.md).
 
 ### 8.1 Vị trí áp dụng staging files
 
@@ -160,12 +167,12 @@ Plan được phép:
 - update in-place event selectors;
 - update Object Lock default/lifecycle;
 - update router;
-- add g7/g8, heartbeat, alarms và IAM/log group cần cho heartbeat.
+- add g7/g8, heartbeat, alarms, IAM/log group, đúng một fallback SNS cùng region và CloudWatch publish policy trên primary/fallback.
 
 Plan không được phép:
 
 - replace/delete trail hoặc bucket;
-- tạo trail/bucket/SNS thứ hai;
+- tạo trail/bucket/router trùng lặp hoặc SNS ngoài heartbeat-fallback đã review;
 - thay EKS/network/datastore/workload/flagd;
 - thêm audit bucket vào S3 data selector;
 - chứa ARN chưa được owner duyệt.
@@ -179,12 +186,13 @@ Advanced selectors phải giữ `eventCategory=Management` và thêm `eventCateg
 3. Xác nhận selectors đúng Management + approved S3 Data.
 4. Chờ object mới sau cutover và xác nhận `Mode=COMPLIANCE`, retain-until tối thiểu 365 ngày.
 5. Chờ digest đủ bao phủ; dùng ngưỡng 90 phút rồi chạy `validate-logs` đúng region.
-6. Xác nhận heartbeat `PASS`, schedule 5 phút và Errors/Missing alarms healthy.
-7. Xác nhận toàn bộ recipient bắt buộc `Confirmed` và nhận test alert.
+6. Xác nhận heartbeat `PASS`, schedule 5 phút và Errors/Missing alarms healthy; `AlarmActions` đúng primary + fallback.
+7. Recipient xác nhận subscription fallback mới; sau đó xác nhận toàn bộ recipient trên primary/global/fallback `Confirmed` và nhận test alert.
+8. Đối chiếu mọi g7/g8 CRITICAL alert trong apply với change ID; sự kiện không khớp phải mở incident.
 
 ## 9. Phase IAM Hardening
 
-Thực hiện riêng theo [HD_iam_hardening-v2.0.md](code_audit/HD_iam_hardening-v2.0.md) sau khi foundation healthy và đã ghi được IAM changes.
+Thực hiện riêng theo [HD_iam_hardening-v2.1.md](code_audit/HD_iam_hardening-v2.1.md) sau khi foundation healthy và đã ghi được IAM changes.
 
 ### 9.1 Baseline phải xử lý
 
@@ -214,10 +222,10 @@ Thực hiện riêng theo [HD_iam_hardening-v2.0.md](code_audit/HD_iam_hardening
 | T04 | Canary `GetSecretValue` | Management event có metadata; không có `SecretString`/`SecretBinary` |
 | T05 | Integrity | `validate-logs` không `INVALID`/missing trong window |
 | T06 | Retention | Object mới `COMPLIANCE >=365 ngày`; lifecycle 400 |
-| T07 | Heartbeat | Invocation 5 phút; PASS; log age ≤20; digest age ≤90 |
+| T07 | Heartbeat | Invocation 5 phút; PASS; log age ≤20; digest age ≤90; alarm primary/fallback và Lambda primary/global hoạt động độc lập |
 | T08 | Alert-plane tamper | Denied + group 7 alert + post-state không đổi |
 | T09 | IAM escalation | Boundary/trust/policy/OIDC mutation `explicitDeny` |
-| T10 | Forensic timeline | Identity → session → action → resource → UTC |
+| T10 | Thin-log/forensic | Approved `PutMetricAlarm`/`PutRule` nối pre-state/plan → redacted request parameters → post-state và identity/session/request ID |
 | T11 | Cleanup/cost | Canary cleanup có record; owner chấp nhận cost/coverage |
 
 Mỗi evidence directory phải có:
@@ -242,6 +250,7 @@ Không ghi credential, access-key ID, secret value hoặc production object cont
 | Denied action lại thành công | Dừng test; mở Critical incident; preserve event/post-state |
 | IAM baseline bị hỏng | Rollback từng identity tại đúng owning root; không bypass bằng root |
 | Compliance retention đã áp dụng | Không rút ngắn; chấp nhận retention/cost theo approval |
+| Version hiện hữu đã ≥400 ngày | NO-GO; chọn lifecycle dài hơn hoặc preservation/export có owner approval trước apply |
 
 ## 12. Phối hợp và trách nhiệm
 
@@ -257,6 +266,8 @@ Không ghi credential, access-key ID, secret value hoặc production object cont
 
 - Single-account root không thể bị permissions boundary và vẫn có thể tác động audit/alert plane. Heartbeat giảm blind window nhưng không loại bỏ quyền root; bắt buộc root MFA, không có root access key, named custodian, incident-only process và signed residual acceptance.
 - Object giao trước cutover giữ retention cũ; claim 365 ngày chỉ tính cho object mới sau UTC cutover.
+- Lifecycle 400 ngày áp dụng cả object hiện có chưa bị xóa nên chi phí tăng ngay; `GLACIER_IR` chưa chọn và chỉ xem xét bằng change riêng sau cost model.
+- Retention 365 ngày cung cấp 12 tháng điều tra, đủ bao phủ kịch bản attacker tồn tại nhiều ngày/tuần và phát hiện trễ qua các chu kỳ review theo quý; 400 ngày thêm 35 ngày đệm trước expiration. Data/Security owner phải ký rationale và cost trước apply.
 - S3 data events phát sinh phí và có thể gây nhiễu nếu scope quá rộng; exact prefix và cost approval là bắt buộc.
 - EKS audit logging đã bật live nhưng chưa codify trong repo; heartbeat phải phát hiện nếu bị tắt/drift.
 
@@ -264,7 +275,8 @@ Không ghi credential, access-key ID, secret value hoặc production object cont
 
 - [ ] Owner/state/change window được phê duyệt.
 - [ ] Exact S3 scope được ký và khớp 1:1 với Terraform input.
-- [ ] Không còn recipient bắt buộc `PendingConfirmation`.
+- [ ] Không còn recipient bắt buộc `PendingConfirmation` trên primary/global/fallback.
+- [ ] Change ID có Git SHA, saved-plan hash, identity, UTC window, expected action và người trực nhận cảnh báo.
 - [ ] Saved plan không replace/delete trail hoặc bucket và không có workload drift.
 - [ ] Trail logging, selectors, delivery, digest và heartbeat pass sau cutover.
 - [ ] Object mới có Compliance retention ≥365 ngày và lifecycle 400 ngày.
@@ -281,13 +293,13 @@ Không ghi credential, access-key ID, secret value hoặc production object cont
 | Tài liệu | Mục đích |
 |---|---|
 | [m12-gap-v2.0.md](m12-gap-v2.0.md) | Baseline live và gap |
-| [m12-coverage-v2.0.md](m12-coverage-v2.0.md) | S3/secret/control coverage |
+| [m12-coverage-v2.1.md](m12-coverage-v2.1.md) | S3/secret/control coverage |
 | [m12-iam-scope-v2.0.md](m12-iam-scope-v2.0.md) | IAM ownership và migration |
-| [m12-solution-v2.0.md](m12-solution-v2.0.md) | Kiến trúc và trade-off |
-| [m12-runbook-v2.0.md](m12-runbook-v2.0.md) | Phase, gate và rollback |
-| [m12-tests-v2.0.md](m12-tests-v2.0.md) | Test matrix và evidence |
-| [HD_audit_foundation-v2.0.md](code_audit/HD_audit_foundation-v2.0.md) | Foundation step-by-step |
-| [HD_iam_hardening-v2.0.md](code_audit/HD_iam_hardening-v2.0.md) | IAM step-by-step |
+| [m12-solution-v2.2.md](m12-solution-v2.2.md) | Kiến trúc và trade-off |
+| [m12-runbook-v2.2.md](m12-runbook-v2.2.md) | Phase, gate và rollback |
+| [m12-tests-v2.2.md](m12-tests-v2.2.md) | Test matrix và evidence |
+| [HD_audit_foundation-v2.2.md](code_audit/HD_audit_foundation-v2.2.md) | Foundation step-by-step |
+| [HD_iam_hardening-v2.1.md](code_audit/HD_iam_hardening-v2.1.md) | IAM step-by-step |
 
 ## 16. Nguồn kỹ thuật
 
@@ -300,6 +312,8 @@ Không ghi credential, access-key ID, secret value hoặc production object cont
 
 ---
 
-**Phiên bản:** v2.0  
-**Cập nhật:** 21/07/2026  
-**Trạng thái:** READY FOR APPROVAL — chưa được phép apply
+**Phiên bản:** v2.2
+
+**Cập nhật:** 21/07/2026
+
+**Trạng thái:** HANDOFF READY / NOT APPROVED FOR APPLY

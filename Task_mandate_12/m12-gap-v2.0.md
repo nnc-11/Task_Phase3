@@ -46,7 +46,7 @@ Object đã giao trước upgrade giữ retention cũ; thay default retention kh
 ## Asset live đã inventory metadata
 
 - 5 Secrets Manager secrets: `sosflow/db-password`, `techx-corp-tf3/flagd-sync-token`, `techx-tf3/elasticache-auth`, `AmazonMSK_techx-tf3/kafka-scram`, `rds!db-78563b84-b60e-454b-a26f-6c25602a02e8`. Không đọc value.
-- 8 S3 buckets đã liệt kê trong `m12-coverage-v2.0.md`; vẫn cần owner/classification và exact prefix trước khi bật data events.
+- 8 S3 buckets đã liệt kê trong `m12-coverage-v2.1.md`; vẫn cần owner/classification và exact prefix trước khi bật data events.
 - EKS logging/retention đã xác nhận live.
 - IAM live: `AdministratorAccess` gắn vào 1 group, 3 users trực tiếp và 1 role. Đáng chú ý `gitlab-ci-deployer` không MFA, có 2 active keys và đang nằm trong router allowlist; phải sửa critical suppression và phối hợp owner để migrate.
 - AWS Config live chưa có recorder; solution M12 không dựa vào Config để pass, heartbeat kiểm tra trực tiếp các audit controls.

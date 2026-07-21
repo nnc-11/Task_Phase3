@@ -17,38 +17,195 @@ def _field_values(fields, name, operator="Equals"):
     return set(fields.get(name, {}).get(operator, []))
 
 
+def _as_set(value):
+    if value is None:
+        return set()
+    if isinstance(value, list):
+        return set(value)
+    return {value}
+
+
+def _condition_values(condition, operator, key):
+    operator_value = condition.get(operator, {})
+    for current_key, value in operator_value.items():
+        if current_key.lower() == key.lower():
+            return _as_set(value)
+    return set()
+
+
+def _principal_is_all(principal):
+    if principal == "*":
+        return True
+    return (
+        isinstance(principal, dict)
+        and set(principal) == {"AWS"}
+        and _as_set(principal.get("AWS")) == {"*"}
+    )
+
+
+def _has_exact_archive_mutation_deny(policy, bucket_name):
+    expected_actions = {
+        "s3:abortmultipartupload",
+        "s3:bypassgovernanceretention",
+        "s3:deleteobject",
+        "s3:deleteobjecttagging",
+        "s3:deleteobjectversion",
+        "s3:putobject",
+        "s3:putobjectacl",
+        "s3:putobjectlegalhold",
+        "s3:putobjectretention",
+        "s3:putobjecttagging",
+        "s3:restoreobject",
+    }
+    expected_resource = f"arn:aws:s3:::{bucket_name}/*"
+
+    for statement in policy.get("Statement", []):
+        actions = {item.lower() for item in _as_set(statement.get("Action"))}
+        resources = _as_set(statement.get("Resource"))
+        condition = statement.get("Condition", {})
+        condition_shape_is_exact = (
+            set(condition) == {"StringNotEqualsIfExists"}
+            and {
+                item.lower()
+                for item in condition.get("StringNotEqualsIfExists", {})
+            } == {"aws:principalservicename"}
+        )
+        if (
+            statement.get("Sid") == "DenyNonCloudTrailObjectMutation"
+            and statement.get("Effect") == "Deny"
+            and actions == expected_actions
+            and resources == {expected_resource}
+            and _principal_is_all(statement.get("Principal"))
+            and condition_shape_is_exact
+            and _condition_values(
+                condition,
+                "StringNotEqualsIfExists",
+                "aws:PrincipalServiceName",
+            ) == {"cloudtrail.amazonaws.com"}
+            and "NotAction" not in statement
+            and "NotResource" not in statement
+            and "NotPrincipal" not in statement
+        ):
+            return True
+    return False
+
+
+def _check_alarm_configuration(alarm, expected, expected_actions, alarm_name):
+    failures = []
+    if not alarm.get("ActionsEnabled"):
+        failures.append(f"heartbeat alarm actions are disabled: {alarm_name}")
+    if set(alarm.get("AlarmActions", [])) != expected_actions:
+        failures.append(f"heartbeat alarm actions differ from approved state: {alarm_name}")
+
+    scalar_fields = (
+        "Namespace",
+        "MetricName",
+        "Statistic",
+        "Period",
+        "EvaluationPeriods",
+        "DatapointsToAlarm",
+        "Threshold",
+        "ComparisonOperator",
+        "TreatMissingData",
+    )
+    for field in scalar_fields:
+        if alarm.get(field) != expected.get(field):
+            failures.append(f"heartbeat alarm {field} differs from approved state: {alarm_name}")
+
+    actual_dimensions = {
+        item.get("Name"): item.get("Value")
+        for item in alarm.get("Dimensions", [])
+    }
+    if actual_dimensions != expected.get("Dimensions", {}):
+        failures.append(f"heartbeat alarm Dimensions differ from approved state: {alarm_name}")
+
+    for field in ("OKActions", "InsufficientDataActions"):
+        if set(alarm.get(field, [])) != set(expected.get(field, [])):
+            failures.append(f"heartbeat alarm {field} differs from approved state: {alarm_name}")
+
+    for unsupported in ("Metrics", "ExtendedStatistic", "ThresholdMetricId", "Unit"):
+        if alarm.get(unsupported) not in (None, []):
+            failures.append(f"heartbeat alarm has unexpected {unsupported}: {alarm_name}")
+    return failures
+
+
+def _check_cloudwatch_publish_policy(attributes, topic_arn, source_arn_pattern, label):
+    failures = []
+    try:
+        policy = json.loads(attributes.get("Policy", "{}"))
+    except (TypeError, json.JSONDecodeError) as exc:
+        return [f"SNS topic policy is not valid JSON: {label}: {exc}"]
+
+    account_id = topic_arn.split(":")[4]
+    found = False
+    for statement in policy.get("Statement", []):
+        principal = statement.get("Principal", {})
+        services = _as_set(principal.get("Service")) if isinstance(principal, dict) else set()
+        condition = statement.get("Condition", {})
+        if (
+            statement.get("Effect") == "Allow"
+            and {item.lower() for item in _as_set(statement.get("Action"))} == {"sns:publish"}
+            and _as_set(statement.get("Resource")) == {topic_arn}
+            and services == {"cloudwatch.amazonaws.com"}
+            and set(condition) == {"StringEquals", "ArnLike"}
+            and _condition_values(condition, "StringEquals", "aws:SourceAccount") == {account_id}
+            and _condition_values(condition, "ArnLike", "aws:SourceArn") == {source_arn_pattern}
+        ):
+            found = True
+            break
+    if not found:
+        failures.append(f"SNS CloudWatch publish policy is missing or weakened: {label}")
+    return failures
+
+
 def _check_selectors(client, trail_name, required_s3_arns):
     response = client.get_event_selectors(TrailName=trail_name)
     selectors = response.get("AdvancedEventSelectors", [])
-    management_read_write = False
+    management_selector_count = 0
+    s3_selector_count = 0
     discovered_s3 = set()
+    unexpected_selectors = []
 
     for selector in selectors:
         fields = {item["Field"]: item for item in selector.get("FieldSelectors", [])}
         categories = _field_values(fields, "eventCategory")
-        if "Management" in categories:
-            read_only = fields.get("readOnly")
-            allowed_fields = {"eventCategory", "readOnly"}
-            if set(fields).issubset(allowed_fields) and (
-                read_only is None or set(read_only.get("Equals", [])) == {"true", "false"}
-            ):
-                management_read_write = True
-        if (
-            "Data" in categories
+        exact_management = (
+            selector.get("Name") == "ManagementReadWrite"
+            and set(fields) == {"eventCategory"}
+            and set(fields["eventCategory"]) == {"Field", "Equals"}
+            and categories == {"Management"}
+        )
+        exact_s3 = (
+            selector.get("Name") == "ApprovedSensitiveS3Objects"
+            and categories == {"Data"}
             and "AWS::S3::Object" in _field_values(fields, "resources.type")
             and set(fields) == {"eventCategory", "resources.type", "resources.ARN"}
-        ):
+            and set(fields["eventCategory"]) == {"Field", "Equals"}
+            and set(fields["resources.type"]) == {"Field", "Equals"}
+            and set(fields["resources.ARN"]) == {"Field", "StartsWith"}
+        )
+        if exact_management:
+            management_selector_count += 1
+        elif exact_s3:
+            s3_selector_count += 1
             discovered_s3.update(_field_values(fields, "resources.ARN", "StartsWith"))
+        else:
+            unexpected_selectors.append(selector.get("Name", "<unnamed>"))
 
     failures = []
-    if not management_read_write:
-        failures.append("management selector does not cover both read and write events")
+    if management_selector_count != 1:
+        failures.append("exactly one approved ManagementReadWrite selector is required")
     required = set(required_s3_arns)
+    expected_s3_selector_count = 1 if required else 0
+    if s3_selector_count != expected_s3_selector_count:
+        failures.append("approved S3 selector count differs from expected state")
     if discovered_s3 != required:
         failures.append(
             "S3 data selector differs from approved scope: "
             f"missing={sorted(required - discovered_s3)}, unexpected={sorted(discovered_s3 - required)}"
         )
+    if unexpected_selectors:
+        failures.append(f"unexpected or weakened advanced selectors: {sorted(unexpected_selectors)}")
     return failures
 
 
@@ -73,6 +230,17 @@ def _check_rule(client, rule_name, expected, target_arn, label):
     for field, actual, wanted in checks:
         if actual != wanted:
             failures.append(f"EventBridge pattern mismatch {label}/{rule_name}/{field}")
+
+    # Do not only compare AWS state with Terraform-derived expected values.
+    # This invariant also catches a semantically wrong source/eventSource pair
+    # in the declared Terraform configuration (for example aws.cloudwatch with
+    # monitoring.amazonaws.com).
+    semantic_sources = {
+        f"aws.{event_source.split('.', 1)[0]}"
+        for event_source in actual_detail.get("eventSource", [])
+    }
+    if set(actual_pattern.get("source", [])) != semantic_sources:
+        failures.append(f"EventBridge source/eventSource semantic mismatch: {label}/{rule_name}")
 
     targets = client.list_targets_by_rule(Rule=rule_name).get("Targets", [])
     if target_arn not in {item.get("Arn") for item in targets}:
@@ -102,12 +270,25 @@ def _check_subscriptions(client, topic_arn, expected_endpoints, label):
     return failures
 
 
-def handler(_event, _context):
+def _publish_independently(destinations, subject, message):
+    delivered = []
+    failures = []
+    for client, topic_arn, label in destinations:
+        try:
+            client.publish(TopicArn=topic_arn, Subject=subject, Message=message)
+            delivered.append(label)
+        except Exception as exc:
+            failures.append(f"{label}: {type(exc).__name__}: {exc}")
+    return delivered, failures
+
+
+def handler(event, _context):
     region = os.environ["PRIMARY_REGION"]
     global_region = os.environ["GLOBAL_REGION"]
     trail_name = os.environ["TRAIL_NAME"]
     bucket_name = os.environ["AUDIT_BUCKET_NAME"]
     topic_arn = os.environ["ALERT_TOPIC_ARN"]
+    fallback_topic_arn = os.environ["FALLBACK_ALERT_TOPIC_ARN"]
     global_topic_arn = os.environ["GLOBAL_ALERT_TOPIC_ARN"]
     max_log_age = int(os.environ["MAX_LOG_DELIVERY_AGE_MINUTES"])
     max_digest_age = int(os.environ["MAX_DIGEST_DELIVERY_AGE_MINUTES"])
@@ -121,6 +302,9 @@ def handler(_event, _context):
     schedule_rule_name = os.environ["HEARTBEAT_SCHEDULE_RULE_NAME"]
     heartbeat_function_arn = os.environ["HEARTBEAT_FUNCTION_ARN"]
     alarm_names = json.loads(os.environ["HEARTBEAT_ALARM_NAMES_JSON"])
+    expected_alarm_config = json.loads(os.environ["HEARTBEAT_ALARM_CONFIG_JSON"])
+    expected_alarm_actions = set(json.loads(os.environ["HEARTBEAT_ALARM_ACTION_ARNS_JSON"]))
+    alarm_source_arn_pattern = os.environ["HEARTBEAT_ALARM_SOURCE_ARN_PATTERN"]
     expected_endpoints = json.loads(os.environ["EXPECTED_SUBSCRIPTION_ENDPOINTS_JSON"])
     required_s3_arns = json.loads(os.environ["S3_DATA_EVENT_ARNS_JSON"])
 
@@ -135,6 +319,29 @@ def handler(_event, _context):
     cloudwatch = boto3.client("cloudwatch", region_name=region)
     eks = boto3.client("eks", region_name=region)
     failures = []
+
+    direct_alert_destinations = (
+        (sns, topic_arn, region),
+        (sns_global, global_topic_arn, global_region),
+    )
+    if isinstance(event, dict) and event.get("forceAlertTest") is True:
+        test_result = {
+            "checkedAt": datetime.now(timezone.utc).isoformat(),
+            "status": "TEST",
+            "message": "Mandate 12 heartbeat direct alert-path test; no audit configuration was changed.",
+        }
+        delivered, delivery_failures = _publish_independently(
+            direct_alert_destinations,
+            "TEST: TF3 Mandate 12 heartbeat alert paths",
+            json.dumps(test_result, indent=2),
+        )
+        test_result["alertDeliveredTo"] = delivered
+        test_result["alertDeliveryFailures"] = delivery_failures
+        test_result["status"] = "PASS" if len(delivered) == len(direct_alert_destinations) else "FAIL"
+        print(json.dumps(test_result, default=str))
+        if test_result["status"] != "PASS":
+            raise RuntimeError("one or more heartbeat direct alert paths failed")
+        return test_result
 
     try:
         trails = cloudtrail.describe_trails(trailNameList=[trail_name], includeShadowTrails=False)
@@ -180,20 +387,29 @@ def handler(_event, _context):
 
         lifecycle = s3.get_bucket_lifecycle_configuration(Bucket=bucket_name)
         expiration_days = [
-            rule.get("Expiration", {}).get("Days", 0)
+            rule["Expiration"]["Days"]
             for rule in lifecycle.get("Rules", [])
             if rule.get("Status") == "Enabled"
+            and rule.get("Expiration", {}).get("Days") is not None
         ]
         if not expiration_days or min(expiration_days) < required_lifecycle:
             failures.append("audit bucket lifecycle is shorter than the approved retention")
+        noncurrent_expiration_days = [
+            rule["NoncurrentVersionExpiration"]["NoncurrentDays"]
+            for rule in lifecycle.get("Rules", [])
+            if rule.get("Status") == "Enabled"
+            and rule.get("NoncurrentVersionExpiration", {}).get("NoncurrentDays") is not None
+        ]
+        if not noncurrent_expiration_days or min(noncurrent_expiration_days) < required_lifecycle:
+            failures.append("audit bucket noncurrent-version lifecycle is shorter than approved")
 
         encryption = s3.get_bucket_encryption(Bucket=bucket_name)
         algorithms = {
             item.get("ApplyServerSideEncryptionByDefault", {}).get("SSEAlgorithm")
             for item in encryption.get("ServerSideEncryptionConfiguration", {}).get("Rules", [])
         }
-        if not algorithms.intersection({"AES256", "aws:kms"}):
-            failures.append("audit bucket default encryption is missing")
+        if algorithms != {"AES256"}:
+            failures.append("audit bucket default encryption differs from approved AES256 state")
 
         public_access = s3.get_public_access_block(Bucket=bucket_name)["PublicAccessBlockConfiguration"]
         if not all(public_access.get(key) for key in (
@@ -203,26 +419,7 @@ def handler(_event, _context):
         if s3.get_bucket_policy_status(Bucket=bucket_name).get("PolicyStatus", {}).get("IsPublic"):
             failures.append("audit bucket policy is public")
         policy = json.loads(s3.get_bucket_policy(Bucket=bucket_name)["Policy"])
-        required_mutations = {
-            "s3:BypassGovernanceRetention", "s3:DeleteObject", "s3:DeleteObjectVersion",
-            "s3:PutObject", "s3:PutObjectRetention"
-        }
-        mutation_deny_found = False
-        for statement in policy.get("Statement", []):
-            actions = statement.get("Action", [])
-            if isinstance(actions, str):
-                actions = [actions]
-            resources = statement.get("Resource", [])
-            if isinstance(resources, str):
-                resources = [resources]
-            if (
-                statement.get("Effect") == "Deny"
-                and required_mutations.issubset(set(actions))
-                and f"arn:aws:s3:::{bucket_name}/*" in resources
-            ):
-                mutation_deny_found = True
-                break
-        if not mutation_deny_found:
+        if not _has_exact_archive_mutation_deny(policy, bucket_name):
             failures.append("audit bucket non-CloudTrail object-mutation deny is missing or weakened")
     except Exception as exc:
         failures.append(f"S3 audit bucket check failed: {type(exc).__name__}: {exc}")
@@ -255,6 +452,9 @@ def handler(_event, _context):
             config = client.get_function_configuration(FunctionName=function_arn)
             if config.get("State") != "Active" or config.get("LastUpdateStatus") not in (None, "Successful"):
                 failures.append(f"{label} Lambda is not healthy")
+            concurrency = client.get_function_concurrency(FunctionName=function_arn)
+            if "ReservedConcurrentExecutions" in concurrency:
+                failures.append(f"{label} Lambda has unexpected reserved concurrency")
         except Exception as exc:
             failures.append(f"{label} Lambda check failed: {type(exc).__name__}: {exc}")
 
@@ -265,18 +465,31 @@ def handler(_event, _context):
             alarm = alarms_by_name.get(alarm_name)
             if not alarm:
                 failures.append(f"heartbeat alarm is missing: {alarm_name}")
-            elif not alarm.get("ActionsEnabled") or topic_arn not in alarm.get("AlarmActions", []):
-                failures.append(f"heartbeat alarm action is disabled or changed: {alarm_name}")
+            else:
+                failures.extend(_check_alarm_configuration(
+                    alarm,
+                    expected_alarm_config[alarm_name],
+                    expected_alarm_actions,
+                    alarm_name,
+                ))
     except Exception as exc:
         failures.append(f"CloudWatch alarm check failed: {type(exc).__name__}: {exc}")
 
     for client, current_topic, label in (
         (sns, topic_arn, region),
+        (sns, fallback_topic_arn, f"{region}/heartbeat-fallback"),
         (sns_global, global_topic_arn, global_region),
     ):
         try:
-            client.get_topic_attributes(TopicArn=current_topic)
+            attributes = client.get_topic_attributes(TopicArn=current_topic).get("Attributes", {})
             failures.extend(_check_subscriptions(client, current_topic, expected_endpoints, label))
+            if current_topic in expected_alarm_actions:
+                failures.extend(_check_cloudwatch_publish_policy(
+                    attributes,
+                    current_topic,
+                    alarm_source_arn_pattern,
+                    label,
+                ))
         except Exception as exc:
             failures.append(f"SNS alert path check failed: {label}: {type(exc).__name__}: {exc}")
 
@@ -297,11 +510,17 @@ def handler(_event, _context):
         "status": "FAIL" if failures else "PASS",
         "failures": failures,
     }
-    print(json.dumps(result, default=str))
     if failures:
-        sns.publish(
-            TopicArn=topic_arn,
-            Subject="CRITICAL: TF3 Mandate 12 audit heartbeat failed",
-            Message=json.dumps(result, indent=2, default=str),
+        delivered, delivery_failures = _publish_independently(
+            direct_alert_destinations,
+            "CRITICAL: TF3 Mandate 12 audit heartbeat failed",
+            json.dumps(result, indent=2, default=str),
         )
+        result["alertDeliveredTo"] = delivered
+        result["alertDeliveryFailures"] = delivery_failures
+        print(json.dumps(result, default=str))
+        if not delivered:
+            raise RuntimeError("heartbeat failed and both direct alert paths failed")
+    else:
+        print(json.dumps(result, default=str))
     return result
