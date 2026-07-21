@@ -1,0 +1,14 @@
+# Copy as infra/live/production/m12-variables.tf after approval.
+
+variable "audit_detection_s3_data_event_arns" {
+  description = "Mandate 12 approved S3 Object ARN scopes for the existing M11 trail."
+  type        = list(string)
+
+  validation {
+    condition = length(var.audit_detection_s3_data_event_arns) > 0 && alltrue([
+      for arn in var.audit_detection_s3_data_event_arns :
+      can(regex("^arn:aws:s3:::[^/]+/.*$", arn)) && endswith(arn, "/")
+    ])
+    error_message = "Mandate 12 requires at least one approved S3 Object ARN ending with /."
+  }
+}

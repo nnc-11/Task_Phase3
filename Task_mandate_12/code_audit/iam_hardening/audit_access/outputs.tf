@@ -1,10 +1,10 @@
 output "audit_admin_role_arn" {
-  description = "Insert this ARN into the deny list of the allowlisted operator boundary template."
+  description = "Pass this ARN in audit_access_role_arns when planning the iam_change root."
   value       = aws_iam_role.audit_admin.arn
 }
 
 output "breakglass_role_arn" {
-  description = "Insert this ARN into the deny list of the allowlisted operator boundary template."
+  description = "Pass this ARN in audit_access_role_arns when planning the iam_change root."
   value       = aws_iam_role.breakglass.arn
 }
 

@@ -1,18 +1,66 @@
-# Copy to terraform.tfvars only in the approved deployment workspace.
-# This root is deployed only after the rendered operator boundary managed policy exists.
+# Copy to terraform.tfvars only in the approved IAM deployment workspace.
+# Get every ARN from Terraform outputs/read-only discovery after foundation is healthy.
 
-name_prefix                  = "tf3-m12"
-operator_boundary_policy_arn = "arn:aws:iam::197826770971:policy/REPLACE_WITH_RENDERED_OPERATOR_BOUNDARY"
+name_prefix     = "tf3-m12"
+audit_trail_arn = "arn:aws:cloudtrail:ap-southeast-1:197826770971:trail/REPLACE_EXISTING_M11_TRAIL"
+audit_bucket_arn = "arn:aws:s3:::REPLACE_EXISTING_M11_AUDIT_BUCKET"
 
-target_user_arns = [
-  "arn:aws:iam::197826770971:user/REPLACE_WITH_DAILY_OPERATOR"
+# Minimum nine: primary g1/g4/g5/g6/g7, global g2/g3/g8, heartbeat schedule.
+audit_rule_arns = [
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_PRIMARY_G1",
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_PRIMARY_G4",
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_PRIMARY_G5",
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_PRIMARY_G6",
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_PRIMARY_G7",
+  "arn:aws:events:us-east-1:197826770971:rule/REPLACE_GLOBAL_G2",
+  "arn:aws:events:us-east-1:197826770971:rule/REPLACE_GLOBAL_G3",
+  "arn:aws:events:us-east-1:197826770971:rule/REPLACE_GLOBAL_G8",
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_HEARTBEAT_SCHEDULE",
 ]
 
+audit_lambda_arns = [
+  "arn:aws:lambda:ap-southeast-1:197826770971:function:REPLACE_PRIMARY_ROUTER",
+  "arn:aws:lambda:us-east-1:197826770971:function:REPLACE_GLOBAL_ROUTER",
+  "arn:aws:lambda:ap-southeast-1:197826770971:function:REPLACE_HEARTBEAT",
+]
+
+audit_log_group_arns = [
+  "arn:aws:logs:ap-southeast-1:197826770971:log-group:/aws/lambda/REPLACE_PRIMARY_ROUTER",
+  "arn:aws:logs:us-east-1:197826770971:log-group:/aws/lambda/REPLACE_GLOBAL_ROUTER",
+  "arn:aws:logs:ap-southeast-1:197826770971:log-group:/aws/lambda/REPLACE_HEARTBEAT",
+]
+
+heartbeat_alarm_arns = [
+  "arn:aws:cloudwatch:ap-southeast-1:197826770971:alarm:REPLACE_HEARTBEAT_MISSING",
+  "arn:aws:cloudwatch:ap-southeast-1:197826770971:alarm:REPLACE_HEARTBEAT_ERRORS",
+]
+
+alert_topic_arns = [
+  "arn:aws:sns:ap-southeast-1:197826770971:REPLACE_PRIMARY_TOPIC",
+  "arn:aws:sns:us-east-1:197826770971:REPLACE_GLOBAL_TOPIC",
+]
+
+# Include every required confirmed subscription from both topics; never use PendingConfirmation.
+alert_subscription_arns = [
+  "arn:aws:sns:ap-southeast-1:197826770971:REPLACE_PRIMARY_TOPIC:REPLACE_CONFIRMED_UUID",
+  "arn:aws:sns:us-east-1:197826770971:REPLACE_GLOBAL_TOPIC:REPLACE_CONFIRMED_UUID",
+]
+
+audit_access_role_arns = [
+  "arn:aws:iam::197826770971:role/tf3-m12-audit-admin",
+  "arn:aws:iam::197826770971:role/tf3-m12-audit-breakglass",
+]
+
+# Strict default. Add only exact reviewed non-audit roles required by daily operation.
+approved_assume_role_arns = []
+
+target_user_arns = [] # Fill only for an unmanaged/transferred target when executor=true.
 target_role_arns = []
 
-trusted_change_owner_arns = [
-  "arn:aws:iam::197826770971:user/REPLACE_WITH_SECURITY_OWNER"
-]
+# false: create boundary only for owner roots. true: also create executor for exact unmanaged/transferred targets above.
+enable_iam_change_executor = false
 
-# Keep false in normal operation. A separate approved rollback change is required to set true.
-allow_boundary_removal = false
+trusted_change_owner_arns = [] # Required and non-empty only when enable_iam_change_executor=true.
+
+allow_boundary_removal    = false
+target_ownership_confirmed = false # Change only after signed state/owner evidence.

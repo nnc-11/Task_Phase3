@@ -23,6 +23,20 @@ data "aws_iam_policy_document" "audit_access_trust" {
 
 data "aws_iam_policy_document" "audit_read" {
   statement {
+    sid = "ReadAuditArchiveControls"
+    actions = [
+      "s3:GetBucketEncryption",
+      "s3:GetBucketLifecycleConfiguration",
+      "s3:GetBucketPolicy",
+      "s3:GetBucketPolicyStatus",
+      "s3:GetBucketPublicAccessBlock",
+      "s3:GetBucketVersioning",
+      "s3:GetObjectLockConfiguration"
+    ]
+    resources = [var.audit_bucket_arn]
+  }
+
+  statement {
     sid = "ReadAuditArchiveBucketMetadata"
     actions = [
       "s3:GetBucketLocation",
@@ -72,6 +86,30 @@ data "aws_iam_policy_document" "audit_read" {
       "events:ListTargetsByRule"
     ]
     resources = tolist(var.audit_rule_arns)
+  }
+
+  statement {
+    sid       = "ReadAuditLambdaConfiguration"
+    actions   = ["lambda:GetFunctionConfiguration"]
+    resources = tolist(var.audit_lambda_arns)
+  }
+
+  statement {
+    sid = "ReadAuditLambdaLogs"
+    actions = [
+      "logs:DescribeLogStreams",
+      "logs:FilterLogEvents",
+      "logs:GetLogEvents"
+    ]
+    resources = flatten([
+      for arn in var.audit_log_group_arns : [arn, "${arn}:*"]
+    ])
+  }
+
+  statement {
+    sid       = "ReadHeartbeatAlarms"
+    actions   = ["cloudwatch:DescribeAlarms"]
+    resources = ["*"]
   }
 
   statement {

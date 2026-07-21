@@ -3,7 +3,7 @@
 
 name_prefix     = "tf3-m12"
 audit_bucket_arn = "arn:aws:s3:::REPLACE_WITH_AUDIT_BUCKET"
-audit_trail_arn  = "arn:aws:cloudtrail:ap-southeast-1:197826770971:trail/tf3-m12-audit"
+audit_trail_arn  = "arn:aws:cloudtrail:ap-southeast-1:197826770971:trail/REPLACE_EXISTING_M11_TRAIL"
 
 alert_topic_arns = [
   "arn:aws:sns:ap-southeast-1:197826770971:REPLACE_WITH_alert_topic_arn",
@@ -11,18 +11,32 @@ alert_topic_arns = [
 ]
 
 audit_rule_arns = [
-  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_WITH_trail",
-  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_WITH_trail_selectors",
-  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_WITH_bucket",
-  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_WITH_event_rule",
-  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_WITH_event_target",
-  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_WITH_sns_topic",
-  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_WITH_sns_subscription",
-  "arn:aws:events:us-east-1:197826770971:rule/REPLACE_WITH_global_iam",
-  "arn:aws:events:us-east-1:197826770971:rule/REPLACE_WITH_global_event_rule",
-  "arn:aws:events:us-east-1:197826770971:rule/REPLACE_WITH_global_event_target",
-  "arn:aws:events:us-east-1:197826770971:rule/REPLACE_WITH_global_sns_topic",
-  "arn:aws:events:us-east-1:197826770971:rule/REPLACE_WITH_global_sns_subscription"
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_PRIMARY_G1",
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_PRIMARY_G4",
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_PRIMARY_G5",
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_PRIMARY_G6",
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_PRIMARY_G7",
+  "arn:aws:events:us-east-1:197826770971:rule/REPLACE_GLOBAL_G2",
+  "arn:aws:events:us-east-1:197826770971:rule/REPLACE_GLOBAL_G3",
+  "arn:aws:events:us-east-1:197826770971:rule/REPLACE_GLOBAL_G8",
+  "arn:aws:events:ap-southeast-1:197826770971:rule/REPLACE_HEARTBEAT_SCHEDULE"
+]
+
+audit_lambda_arns = [
+  "arn:aws:lambda:ap-southeast-1:197826770971:function:REPLACE_PRIMARY_ROUTER",
+  "arn:aws:lambda:us-east-1:197826770971:function:REPLACE_GLOBAL_ROUTER",
+  "arn:aws:lambda:ap-southeast-1:197826770971:function:REPLACE_HEARTBEAT",
+]
+
+audit_log_group_arns = [
+  "arn:aws:logs:ap-southeast-1:197826770971:log-group:/aws/lambda/REPLACE_PRIMARY_ROUTER",
+  "arn:aws:logs:us-east-1:197826770971:log-group:/aws/lambda/REPLACE_GLOBAL_ROUTER",
+  "arn:aws:logs:ap-southeast-1:197826770971:log-group:/aws/lambda/REPLACE_HEARTBEAT",
+]
+
+heartbeat_alarm_arns = [
+  "arn:aws:cloudwatch:ap-southeast-1:197826770971:alarm:REPLACE_HEARTBEAT_MISSING",
+  "arn:aws:cloudwatch:ap-southeast-1:197826770971:alarm:REPLACE_HEARTBEAT_ERRORS",
 ]
 
 trusted_principal_arns = [

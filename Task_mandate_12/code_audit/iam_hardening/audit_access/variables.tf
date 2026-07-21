@@ -51,12 +51,39 @@ variable "alert_topic_arns" {
 }
 
 variable "audit_rule_arns" {
-  description = "All EventBridge anti-tamper rule ARNs emitted by the foundation; the current foundation emits twelve rules."
+  description = "All EventBridge anti-tamper and heartbeat schedule rule ARNs emitted by the foundation."
   type        = set(string)
 
   validation {
-    condition     = length(var.audit_rule_arns) == 12 && alltrue([for arn in var.audit_rule_arns : can(regex("^arn:aws:events:[a-z0-9-]+:[0-9]{12}:rule/.+$", arn))])
-    error_message = "audit_rule_arns must contain exactly the twelve valid EventBridge rule ARNs emitted by the current foundation."
+    condition     = length(var.audit_rule_arns) >= 9 && alltrue([for arn in var.audit_rule_arns : can(regex("^arn:aws:events:[a-z0-9-]+:[0-9]{12}:rule/.+$", arn))])
+    error_message = "audit_rule_arns must contain all upgraded M11/M12 EventBridge rules plus the heartbeat schedule (at least nine valid ARNs)."
+  }
+}
+
+variable "audit_lambda_arns" {
+  description = "Primary router, global router and heartbeat Lambda ARNs."
+  type        = set(string)
+  validation {
+    condition     = length(var.audit_lambda_arns) == 3 && alltrue([for arn in var.audit_lambda_arns : can(regex("^arn:aws:lambda:[a-z0-9-]+:[0-9]{12}:function:.+$", arn))])
+    error_message = "audit_lambda_arns must contain exactly three valid Lambda ARNs."
+  }
+}
+
+variable "audit_log_group_arns" {
+  description = "Log-group ARNs of the two routers and heartbeat, without :*."
+  type        = set(string)
+  validation {
+    condition     = length(var.audit_log_group_arns) == 3 && alltrue([for arn in var.audit_log_group_arns : can(regex("^arn:aws:logs:[a-z0-9-]+:[0-9]{12}:log-group:.+$", arn)) && !endswith(arn, ":*")])
+    error_message = "audit_log_group_arns must contain exactly three valid log-group ARNs."
+  }
+}
+
+variable "heartbeat_alarm_arns" {
+  description = "Heartbeat missing/errors alarm ARNs."
+  type        = set(string)
+  validation {
+    condition     = length(var.heartbeat_alarm_arns) == 2 && alltrue([for arn in var.heartbeat_alarm_arns : can(regex("^arn:aws:cloudwatch:[a-z0-9-]+:[0-9]{12}:alarm:.+$", arn))])
+    error_message = "heartbeat_alarm_arns must contain exactly two valid alarm ARNs."
   }
 }
 

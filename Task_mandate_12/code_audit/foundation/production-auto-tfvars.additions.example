@@ -1,0 +1,7 @@
+# Merge into infra/live/production/production.auto.tfvars after owner approval.
+# Lifecycle is deliberately longer than the 365-day Compliance lock.
+audit_detection_trail_s3_retention_days = 400
+
+audit_detection_s3_data_event_arns = [
+  "arn:aws:s3:::<approved-sensitive-bucket>/<approved-prefix>/"
+]
