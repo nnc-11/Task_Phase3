@@ -30,7 +30,7 @@ Không copy các timestamp live trên làm bằng chứng cho ngày deploy. Ngư
 | S3 scope | `m12-coverage-v2.0.md` + metadata-only inventory | Exact ARN kết thúc `/`, owner ký |
 | Retention | Security owner duyệt cutover Compliance 365/lifecycle 400 | Chấp nhận không hồi tố object cũ |
 | Alert | Hai M11 SNS topics và toàn bộ recipient bắt buộc | Không còn `PendingConfirmation`, có người trực/test receipt |
-| GitHub watchdog | OIDC provider hiện hữu, branch `main` protected, Actions schedule được phép chạy | Role read-only và workflow không nằm trong quyền sửa của daily AWS operator |
+| GitHub watchdog (tùy chọn) | Chỉ cần khi chọn lớp giám sát ngoài AWS account | OIDC provider hiện hữu, branch `main` protected và Actions schedule được phép chạy |
 | Cost | Data-event estimate + storage 400 ngày | Trong budget |
 | Baseline | Saved pre-change status/selectors/lock/lifecycle/rules | Đủ hash/timestamp |
 
@@ -207,11 +207,13 @@ aws cloudtrail validate-logs `
 
 Heartbeat log phải `PASS`; mọi recipient bắt buộc trên cả hai SNS topics phải `Confirmed`; canary `GetObject` và `GetSecretValue` có parsed archive evidence. Chưa đủ điều kiện nào thì trạng thái `DEPLOYED/PARTIAL`.
 
-## 9. External watchdog và claim cuối
+## 9. Phần mở rộng tùy chọn — External watchdog
+
+Phần này **không bắt buộc để deploy Audit Foundation**. Chỉ triển khai khi team muốn có thêm tín hiệu giám sát nằm ngoài AWS account, hoặc reviewer yêu cầu tăng mức bảo vệ đối với rủi ro admin/root trong mô hình single-account.
 
 Sau khi foundation healthy, đặt các file theo [external_watchdog/README.md](external_watchdog/README.md): Terraform role vào `infra/bootstrap/github-oidc`, script vào `.github/scripts/` và workflow vào `.github/workflows/`. Điền exact repository variables từ output/live discovery; các biến danh sách dùng dấu phẩy, không có khoảng trắng. Hai biến pattern là JSON map `rule-name -> EventPattern object`, dựng từ từng `aws events describe-rule` sau approved apply và để security owner đối chiếu với plan trước khi lưu. Tạo saved plan riêng cho bootstrap root và yêu cầu owner root đó review/apply. Bật CODEOWNERS/branch protection, GitHub issue permission và notification cho security owner.
 
-Chạy `workflow_dispatch`, sau đó quan sát ít nhất một lượt schedule. GO khi cả hai lần xanh và GitHub branch/environment protection không cho daily AWS operator sửa workflow. Nếu chưa triển khai watchdog, Mandate 12 chỉ được ghi `DEPLOYED/PARTIAL`, trừ khi security/account owner ký chấp nhận residual risk single-account.
+Nếu chọn triển khai, chạy `workflow_dispatch`, sau đó quan sát ít nhất một lượt schedule. Phần mở rộng đạt khi cả hai lần xanh và GitHub branch/environment protection không cho daily AWS operator sửa workflow. Nếu không chọn watchdog, tiếp tục dùng heartbeat, IAM hardening và signed residual-risk acceptance làm phạm vi giải pháp chính; ghi rõ `External watchdog: NOT SELECTED (OPTIONAL)` trong evidence/verdict.
 
 ## 10. Rollback
 

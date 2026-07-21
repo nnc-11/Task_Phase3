@@ -16,4 +16,4 @@ Workflow cần repository variables được liệt kê trong file YAML. `M12_PR
 
 Repository Actions settings phải cho `GITHUB_TOKEN` tạo issue; workflow dùng `issues: write` để tạo/cập nhật incident khi check fail. Bật notification cho security owner. Branch protection/CODEOWNERS phải chặn daily AWS operator sửa hoặc xóa role Terraform, script và workflow; nếu không, watchdog chưa độc lập về quyền vận hành.
 
-Đây là gate bắt buộc để claim `VERIFIED` theo cách hiểu chặt “admin cùng account cũng phải bị phát hiện”. Không có watchdog chỉ claim `DEPLOYED/PARTIAL` và phải có signed risk acceptance.
+Đây là phần mở rộng tùy chọn, không phải dependency bắt buộc của Audit Foundation. Nếu không chọn, ghi `External watchdog: NOT SELECTED (OPTIONAL)` và giữ signed residual-risk acceptance cho giới hạn single-account. Nếu reviewer yêu cầu tín hiệu độc lập ngoài AWS thì triển khai phần này trước verdict cuối.
