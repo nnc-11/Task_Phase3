@@ -1,0 +1,11 @@
+{
+  "resource_changes": [
+    {
+      "address": "aws_iam_role.example",
+      "type": "aws_iam_role",
+      "change": {
+        "actions": ["update"]
+      }
+    }
+  ]
+}

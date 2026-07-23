@@ -1,0 +1,14 @@
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+__pycache__/
+*.py[cod]
+*.zip
+.aws/
+.env
+.env.*
+evidence/

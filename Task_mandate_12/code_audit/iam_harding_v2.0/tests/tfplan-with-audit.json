@@ -1,0 +1,18 @@
+{
+  "resource_changes": [
+    {
+      "address": "module.audit_detection_ap_southeast_1.aws_cloudwatch_event_rule.groups[\"g1\"]",
+      "type": "aws_cloudwatch_event_rule",
+      "change": {
+        "actions": ["update"]
+      }
+    },
+    {
+      "address": "aws_lambda_function.m12_audit_heartbeat",
+      "type": "aws_lambda_function",
+      "change": {
+        "actions": ["update"]
+      }
+    }
+  ]
+}

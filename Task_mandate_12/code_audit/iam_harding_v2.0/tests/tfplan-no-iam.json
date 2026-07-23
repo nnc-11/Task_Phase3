@@ -1,0 +1,11 @@
+{
+  "resource_changes": [
+    {
+      "address": "aws_s3_bucket.example",
+      "type": "aws_s3_bucket",
+      "change": {
+        "actions": ["update"]
+      }
+    }
+  ]
+}

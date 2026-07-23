@@ -1,0 +1,12 @@
+{
+  "resource_changes": [
+    {
+      "address": "data.aws_iam_role.existing",
+      "mode": "data",
+      "type": "aws_iam_role",
+      "change": {
+        "actions": ["read"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+name: Terraform Plan (bootstrap IAM)
+
+on:
+  pull_request:
+    paths:
+      - "infra/bootstrap/github-oidc/**"
+      - ".github/workflows/terraform-bootstrap-plan.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "infra/bootstrap/github-oidc/**"
+      - ".github/workflows/terraform-bootstrap-plan.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-southeast-1
+  TF_VERSION: "1.15.4"
+
+concurrency:
+  group: terraform-bootstrap-github-oidc
+  cancel-in-progress: false
+
+jobs:
+  plan-bootstrap:
+    name: Plan bootstrap IAM
+    if: >-
+      (github.event_name == 'pull_request'
+       && github.event.pull_request.head.repo.full_name == github.repository)
+      || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/bootstrap/github-oidc
+
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure read-only plan credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          role-to-assume: arn:aws:iam::197826770971:role/techx-corp-tf3-gha-terraform-plan
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive .
+
+      - name: Initialize bootstrap state
+        run: |
+          terraform init \
+            -backend-config="bucket=techx-tf3-197826770971-tfstate" \
+            -backend-config="key=bootstrap/github-oidc/terraform.tfstate" \
+            -backend-config="region=ap-southeast-1" \
+            -backend-config="dynamodb_table=techx-tf3-terraform-lock" \
+            -backend-config="encrypt=true"
+
+      - name: Validate configuration
+        run: terraform validate
+
+      - name: Plan bootstrap IAM
+        run: terraform plan -no-color -input=false
+

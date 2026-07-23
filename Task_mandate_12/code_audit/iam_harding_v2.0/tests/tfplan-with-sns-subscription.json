@@ -1,0 +1,11 @@
+{
+  "resource_changes": [
+    {
+      "address": "aws_sns_topic_subscription.non_audit_example",
+      "type": "aws_sns_topic_subscription",
+      "change": {
+        "actions": ["update"]
+      }
+    }
+  ]
+}
