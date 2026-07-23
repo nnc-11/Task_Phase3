@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc">
+  <title id="title">Mandate 12 - Bốn cơ chế bảo vệ audit</title>
+  <desc id="desc">Kiến trúc giải thích cơ chế chống làm hụt, làm mù, xóa log và làm mỏng bằng chứng.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#071321"/>
+      <stop offset="1" stop-color="#10243e"/>
+    </linearGradient>
+    <linearGradient id="topBand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#102942"/>
+      <stop offset="1" stop-color="#122d49"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#000000" flood-opacity="0.30"/>
+    </filter>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L11,5.5 L0,11 z" fill="#68c9ff"/>
+    </marker>
+    <marker id="arrowRed" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L11,5.5 L0,11 z" fill="#ff738f"/>
+    </marker>
+    <marker id="arrowAmber" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L11,5.5 L0,11 z" fill="#ffc15e"/>
+    </marker>
+    <style>
+      .title { font: 700 34px 'Segoe UI', Arial, sans-serif; fill: #f7fbff; }
+      .subtitle { font: 400 16px 'Segoe UI', Arial, sans-serif; fill: #aec4da; }
+      .stageNo { font: 800 30px 'Segoe UI', Arial, sans-serif; fill: #071321; }
+      .stageTitle { font: 700 18px 'Segoe UI', Arial, sans-serif; fill: #ffffff; }
+      .nodeText { font: 400 13px 'Segoe UI', Arial, sans-serif; fill: #d4e2ef; }
+      .small { font: 400 12px 'Segoe UI', Arial, sans-serif; fill: #afc3d5; }
+      .pill { font: 800 14px 'Segoe UI', Arial, sans-serif; fill: #081521; letter-spacing: .3px; }
+      .railTitle { font: 700 16px 'Segoe UI', Arial, sans-serif; fill: #ffffff; }
+      .railText { font: 400 12px 'Segoe UI', Arial, sans-serif; fill: #c9d8e6; }
+      .arrow { fill: none; stroke: #68c9ff; stroke-width: 4; marker-end: url(#arrow); }
+      .alertArrow { fill: none; stroke: #ffc15e; stroke-width: 3; marker-end: url(#arrowAmber); }
+      .attackArrow { fill: none; stroke: #ff738f; stroke-width: 2.5; stroke-dasharray: 8 7; marker-end: url(#arrowRed); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1100" fill="url(#bg)"/>
+  <circle cx="1515" cy="50" r="210" fill="#164866" opacity="0.18"/>
+  <circle cx="55" cy="1080" r="250" fill="#4a245e" opacity="0.16"/>
+
+  <text x="65" y="62" class="title">MANDATE 12 · BỐN CƠ CHẾ CHỐNG ĐÁNH BẠI AUDIT</text>
+  <text x="65" y="91" class="subtitle">Một sự kiện phải được ghi đúng phạm vi, không bị dừng, không bị xóa/sửa và đủ dữ liệu để điều tra</text>
+  <rect x="1322" y="35" width="215" height="42" rx="21" fill="#91e0b8"/>
+  <text x="1429" y="62" text-anchor="middle" class="pill">EVENT LIFECYCLE</text>
+
+  <!-- Attack labels -->
+  <rect x="100" y="125" width="245" height="45" rx="22" fill="#4b3320" stroke="#ffc15e" stroke-width="2"/>
+  <text x="222" y="153" text-anchor="middle" class="stageTitle">ATTACK: LÀM HỤT</text>
+  <path d="M222 170 V207" class="attackArrow"/>
+
+  <rect x="480" y="125" width="245" height="45" rx="22" fill="#4a2434" stroke="#ff738f" stroke-width="2"/>
+  <text x="602" y="153" text-anchor="middle" class="stageTitle">ATTACK: LÀM MÙ</text>
+  <path d="M602 170 V207" class="attackArrow"/>
+
+  <rect x="858" y="125" width="245" height="45" rx="22" fill="#153d35" stroke="#5fd6b5" stroke-width="2"/>
+  <text x="980" y="153" text-anchor="middle" class="stageTitle">ATTACK: XÓA/SỬA</text>
+  <path d="M980 170 V207" class="attackArrow"/>
+
+  <rect x="1238" y="125" width="245" height="45" rx="22" fill="#322951" stroke="#b99cff" stroke-width="2"/>
+  <text x="1360" y="153" text-anchor="middle" class="stageTitle">ATTACK: LÀM MỎNG</text>
+  <path d="M1360 170 V207" class="attackArrow"/>
+
+  <!-- Lifecycle band -->
+  <rect x="45" y="205" width="1510" height="425" rx="25" fill="url(#topBand)" stroke="#326586" stroke-width="2"/>
+
+  <!-- Stage 1 -->
+  <rect x="75" y="235" width="310" height="345" rx="20" fill="#243626" stroke="#ffc15e" stroke-width="3" filter="url(#shadow)"/>
+  <circle cx="116" cy="277" r="24" fill="#ffc15e"/>
+  <text x="116" y="287" text-anchor="middle" class="stageNo">1</text>
+  <text x="154" y="275" class="stageTitle">ĐÓNG COVERAGE GAP</text>
+  <text x="102" y="321" class="nodeText">• Management read/write events</text>
+  <text x="102" y="347" class="nodeText">• Secrets Manager GetSecretValue metadata</text>
+  <text x="102" y="373" class="nodeText">• Approved S3 object data events</text>
+  <text x="102" y="399" class="nodeText">• Exact bucket/prefix ARN</text>
+  <text x="102" y="425" class="nodeText">• EKS api/audit/authenticator bổ sung</text>
+  <text x="102" y="451" class="nodeText">• Canary GetObject + GetSecretValue</text>
+  <rect x="103" y="490" width="255" height="52" rx="13" fill="#ffc15e"/>
+  <text x="230" y="513" text-anchor="middle" class="pill">CHỐNG “LÀM HỤT”</text>
+  <text x="230" y="531" text-anchor="middle" class="pill">Có vết ở đúng nơi cần log</text>
+
+  <!-- Stage 2 -->
+  <rect x="435" y="235" width="330" height="345" rx="20" fill="#3b2634" stroke="#ff738f" stroke-width="3" filter="url(#shadow)"/>
+  <circle cx="477" cy="277" r="24" fill="#ff738f"/>
+  <text x="477" y="287" text-anchor="middle" class="stageNo">2</text>
+  <text x="515" y="275" class="stageTitle">GIỮ ĐƯỜNG GHI LOG</text>
+  <text x="462" y="321" class="nodeText">• M11 CloudTrail multi-region nâng cấp</text>
+  <text x="462" y="347" class="nodeText">• IAM boundary deny Stop/Delete</text>
+  <text x="462" y="373" class="nodeText">• EventBridge g1/g7/g8 bắt tamper</text>
+  <text x="462" y="399" class="nodeText">• Critical events không bị suppress</text>
+  <text x="462" y="425" class="nodeText">• Heartbeat kiểm tra mỗi 5 phút</text>
+  <text x="462" y="451" class="nodeText">• Missing/Errors alarms phát hiện im lặng</text>
+  <rect x="472" y="490" width="255" height="52" rx="13" fill="#ff738f"/>
+  <text x="599" y="513" text-anchor="middle" class="pill">CHỐNG “LÀM MÙ”</text>
+  <text x="599" y="531" text-anchor="middle" class="pill">Bị chặn hoặc phải kêu</text>
+
+  <!-- Stage 3 -->
+  <rect x="815" y="235" width="310" height="345" rx="20" fill="#163b38" stroke="#5fd6b5" stroke-width="3" filter="url(#shadow)"/>
+  <circle cx="856" cy="277" r="24" fill="#5fd6b5"/>
+  <text x="856" y="287" text-anchor="middle" class="stageNo">3</text>
+  <text x="894" y="275" class="stageTitle">ARCHIVE BẤT BIẾN</text>
+  <text x="842" y="321" class="nodeText">• S3 Versioning</text>
+  <text x="842" y="347" class="nodeText">• Object Lock COMPLIANCE 365 ngày</text>
+  <text x="842" y="373" class="nodeText">• Lifecycle 400 ngày</text>
+  <text x="842" y="399" class="nodeText">• Bucket policy + IAM deny mutation</text>
+  <text x="842" y="425" class="nodeText">• CloudTrail signed digest chain</text>
+  <text x="842" y="451" class="nodeText">• validate-logs chứng minh toàn vẹn</text>
+  <rect x="842" y="490" width="255" height="52" rx="13" fill="#5fd6b5"/>
+  <text x="969" y="513" text-anchor="middle" class="pill">“KHÔNG XÓA ĐƯỢC”</text>
+  <text x="969" y="531" text-anchor="middle" class="pill">Không sửa/xóa trong retention</text>
+
+  <!-- Stage 4 -->
+  <rect x="1175" y="235" width="345" height="345" rx="20" fill="#2d294d" stroke="#b99cff" stroke-width="3" filter="url(#shadow)"/>
+  <circle cx="1217" cy="277" r="24" fill="#b99cff"/>
+  <text x="1217" y="287" text-anchor="middle" class="stageNo">4</text>
+  <text x="1255" y="275" class="stageTitle">FORENSIC ĐỦ NGHĨA</text>
+  <text x="1202" y="321" class="nodeText">• Pre-state từ discovery read-only</text>
+  <text x="1202" y="347" class="nodeText">• Saved Terraform plan + SHA-256</text>
+  <text x="1202" y="373" class="nodeText">• Raw event + requestParameters</text>
+  <text x="1202" y="399" class="nodeText">• Post-state từ describe API</text>
+  <text x="1202" y="425" class="nodeText">• Redaction + evidence export + hash</text>
+  <text x="1202" y="451" class="nodeText">• Reviewer dựng lại cấu hình đã đổi</text>
+  <rect x="1220" y="490" width="255" height="52" rx="13" fill="#b99cff"/>
+  <text x="1347" y="513" text-anchor="middle" class="pill">CHỐNG “LÀM MỎNG”</text>
+  <text x="1347" y="531" text-anchor="middle" class="pill">Biết chính xác điều gì đã đổi</text>
+
+  <!-- Lifecycle arrows -->
+  <path d="M385 402 H435" class="arrow"/>
+  <path d="M765 402 H815" class="arrow"/>
+  <path d="M1125 402 H1175" class="arrow"/>
+  <text x="410" y="389" text-anchor="middle" class="small">GHI</text>
+  <text x="790" y="389" text-anchor="middle" class="small">GIAO</text>
+  <text x="1150" y="389" text-anchor="middle" class="small">ĐIỀU TRA</text>
+
+  <!-- Alert architecture -->
+  <rect x="45" y="665" width="1510" height="330" rx="25" fill="#0d2035" stroke="#315f7e" stroke-width="2"/>
+  <rect x="70" y="687" width="285" height="40" rx="20" fill="#287ca5"/>
+  <text x="212" y="713" text-anchor="middle" class="stageTitle">ĐƯỜNG CẢNH BÁO ĐỘC LẬP</text>
+  <text x="380" y="713" class="small">Phát hiện xong phải tới được người chịu trách nhiệm — không chỉ nằm trong Lambda log</text>
+
+  <!-- Route A -->
+  <rect x="82" y="760" width="265" height="86" rx="15" fill="#3b2634" stroke="#ff738f" stroke-width="2"/>
+  <text x="214" y="790" text-anchor="middle" class="railTitle">Tamper / Heartbeat FAIL</text>
+  <text x="214" y="815" text-anchor="middle" class="railText">Sai selector, trail, digest, bucket, rule...</text>
+
+  <rect x="420" y="760" width="230" height="86" rx="15" fill="#273445" stroke="#ffc15e" stroke-width="2"/>
+  <text x="535" y="790" text-anchor="middle" class="railTitle">Lambda router</text>
+  <text x="535" y="815" text-anchor="middle" class="railText">Hai lần publish độc lập</text>
+
+  <rect x="730" y="760" width="300" height="86" rx="15" fill="#3d321f" stroke="#ffc15e" stroke-width="2"/>
+  <text x="880" y="790" text-anchor="middle" class="railTitle">SNS Primary + Global</text>
+  <text x="880" y="815" text-anchor="middle" class="railText">Confirmed subscriptions</text>
+
+  <!-- Route B -->
+  <rect x="82" y="875" width="265" height="86" rx="15" fill="#24364b" stroke="#68c9ff" stroke-width="2"/>
+  <text x="214" y="905" text-anchor="middle" class="railTitle">Heartbeat Missing / Errors</text>
+  <text x="214" y="930" text-anchor="middle" class="railText">Heartbeat im lặng hoặc Lambda lỗi</text>
+
+  <rect x="420" y="875" width="230" height="86" rx="15" fill="#24364b" stroke="#68c9ff" stroke-width="2"/>
+  <text x="535" y="905" text-anchor="middle" class="railTitle">CloudWatch alarms</text>
+  <text x="535" y="930" text-anchor="middle" class="railText">Missing + Errors</text>
+
+  <rect x="730" y="875" width="300" height="86" rx="15" fill="#3d321f" stroke="#ffc15e" stroke-width="2"/>
+  <text x="880" y="905" text-anchor="middle" class="railTitle">SNS Primary + Fallback</text>
+  <text x="880" y="930" text-anchor="middle" class="railText">Fallback cùng region</text>
+
+  <!-- Owner -->
+  <rect x="1135" y="774" width="350" height="170" rx="20" fill="#153b3b" stroke="#5fd6b5" stroke-width="3" filter="url(#shadow)"/>
+  <circle cx="1190" cy="823" r="25" fill="none" stroke="#5fd6b5" stroke-width="3"/>
+  <path d="M1161 885c4-28 18-42 29-42s25 14 29 42" fill="none" stroke="#5fd6b5" stroke-width="3"/>
+  <text x="1240" y="814" class="stageTitle">SECURITY OWNER / NGƯỜI TRỰC</text>
+  <text x="1240" y="845" class="nodeText">Nhận email/thông báo đã Confirmed</text>
+  <text x="1240" y="871" class="nodeText">Đối chiếu actor + change ID + UTC</text>
+  <text x="1240" y="897" class="nodeText">Mở incident nếu hành động không được duyệt</text>
+  <rect x="1225" y="913" width="200" height="25" rx="12" fill="#5fd6b5"/>
+  <text x="1325" y="931" text-anchor="middle" class="pill">HUMAN ACCOUNTABILITY</text>
+
+  <path d="M347 803 H420" class="alertArrow"/>
+  <path d="M650 803 H730" class="alertArrow"/>
+  <path d="M1030 803 C1080 803 1080 825 1135 825" class="alertArrow"/>
+  <path d="M347 918 H420" class="alertArrow"/>
+  <path d="M650 918 H730" class="alertArrow"/>
+  <path d="M1030 918 C1080 918 1080 890 1135 890" class="alertArrow"/>
+
+  <!-- Footer -->
+  <rect x="65" y="1022" width="1470" height="42" rx="18" fill="#172a40" stroke="#36546f"/>
+  <text x="90" y="1048" class="small">VERIFIED = coverage PASS + không có blind window + Object Lock/digest PASS + forensic evidence đủ nghĩa + IAM hardening + root residual acceptance</text>
+  <text x="1510" y="1048" text-anchor="end" class="small">v1.0 · 23/07/2026</text>
+</svg>
