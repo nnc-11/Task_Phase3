@@ -42,7 +42,7 @@ flowchart LR
 | Bucket policy | Deny non-CloudTrail object put/delete/retention mutation |
 | Router | Critical groups không bị automation allowlist suppress; thêm group 7 audit-control tamper và group 8 IAM/OIDC tamper |
 | Regional rules | Thêm EventBridge/SNS/Lambda/CloudWatch/S3 control mutations |
-| Heartbeat | Lambda gửi độc lập primary/global; alarms gửi primary + fallback cùng region; kiểm tra exact trail/selectors, full archive deny semantics, source semantics, rule pattern/target, full alarm config, CloudWatch topic policy, subscriptions và EKS audit |
+| Heartbeat | Invariant FAIL làm Lambda raise error; Errors alarm gửi primary + fallback theo state transition để chống mail lặp; `forceAlertTest` kiểm thử direct primary/global; kiểm tra exact trail/selectors, full archive deny semantics, source semantics, rule pattern/target, full alarm config, CloudWatch topic policy, tối thiểu một email confirmed trên mỗi topic và EKS audit |
 
 ## Trade-off
 
@@ -70,8 +70,8 @@ AWS xác nhận default retention áp dụng cho object được đặt vào buc
 
 1. IAM boundary deny daily identities sửa trail/archive/alert/heartbeat.
 2. Router luôn alert nhóm critical `1/2/3/4/7/8` kể cả actor là Terraform automation.
-3. Heartbeat 5 phút kiểm tra `IsLogging`, log age 20 phút, digest age 90 phút, log validation, exact selectors, S3 lock/lifecycle/encryption/public block, exact archive deny statement, exact rule pattern/target, routers, full alarm config, CloudWatch topic policies, subscriptions và EKS audit.
-4. Missing invocation và Lambda error có CloudWatch alarm tới primary và fallback cùng region; nếu heartbeat chạy và phát hiện lỗi, nó thử publish primary/global độc lập.
+3. Heartbeat 5 phút kiểm tra `IsLogging`, log age 40 phút, digest age 90 phút, log validation, exact selectors, S3 lock/lifecycle/encryption/public block, exact archive deny statement, exact rule pattern/target, routers, full alarm config, CloudWatch topic policies, tối thiểu một email confirmed trên mỗi topic và EKS audit.
+4. Missing invocation và invariant/runtime error có CloudWatch alarm tới primary và fallback cùng region. Alarm gửi khi đổi trạng thái nên lỗi kéo dài không tạo cùng một email mỗi 5 phút; direct primary/global chỉ dùng cho `forceAlertTest`.
 
 Các g7 alert trong một approved Terraform change vẫn giữ mức CRITICAL. Trước apply phải có change ID chứa Git SHA, saved-plan hash, principal, UTC window và danh sách action dự kiến. Người trực đối chiếu alert với change ID; không mute topic, disable alarm hoặc allowlist g7.
 Root vẫn là residual risk trong same-account và nằm ngoài permissions boundary. Giải pháp yêu cầu root MFA, không có root access key, named custodian, incident-only process và security/account owner ký chấp nhận residual risk.
@@ -109,6 +109,6 @@ Chọn một `PutMetricAlarm` hoặc `PutRule` phát sinh từ chính approved f
 
 ---
 
-**Phiên bản:** v2.2
-**Cập nhật:** 21/07/2026
+**Phiên bản:** v2.3
+**Cập nhật:** 23/07/2026
 **Trạng thái:** HANDOFF READY / NOT APPROVED FOR APPLY

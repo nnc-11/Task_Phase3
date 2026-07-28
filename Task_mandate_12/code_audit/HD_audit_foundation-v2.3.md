@@ -29,7 +29,7 @@ Không copy các timestamp live trên làm bằng chứng cho ngày deploy. Ngư
 | Owner/state | IaC/CD01 xác nhận `infra/live/production` sở hữu M11 | Có reviewer/change window |
 | S3 scope | `m12-coverage-v2.1.md` + metadata-only inventory | Exact ARN kết thúc `/`, owner ký |
 | Retention | Security owner duyệt cutover Compliance 365/lifecycle 400 | Chấp nhận không hồi tố object cũ; 365 ngày bao phủ 12 tháng điều tra, lifecycle 400 ngày thêm 35 ngày đệm vận hành |
-| Alert | Hai M11 SNS topics và toàn bộ recipient bắt buộc | Không còn `PendingConfirmation`, có người trực/test receipt; fallback sẽ confirm ngay sau apply |
+| Alert | Hai M11 SNS topics và heartbeat-fallback | Mỗi topic có ít nhất một email subscription `Confirmed` và người trực xác nhận nhận test; các subscription khác được phép còn pending |
 | Change ID | Ticket/PR chứa Git SHA, identity, UTC window, expected action; plan hash bổ sung sau plan | Có người trực đối chiếu, không mute/suppress critical alert |
 | Cost/age | Data-event estimate + inventory size/age của current và noncurrent versions | Trong budget; không có version ≥400 ngày bị expire ngay, hoặc owner đã chọn lifecycle dài hơn/export được duyệt; tiering chưa chọn |
 | Baseline | Saved pre-change status/selectors/lock/lifecycle/rules | Đủ hash/timestamp |
@@ -192,7 +192,7 @@ aws sns list-topics --region $region --query "Topics[?contains(TopicArn, 'm12-au
 aws sns get-topic-attributes --topic-arn "<primary-topic-arn>" --region $region --query "Attributes.Policy"
 ```
 
-Lấy ARN fallback từ Terraform output rồi yêu cầu tất cả recipient xác nhận email subscription. Kiểm tra:
+Lấy ARN fallback từ Terraform output. Trên **mỗi** topic primary, global và fallback chỉ bắt buộc có tối thiểu một email subscription `Confirmed`; không bắt buộc tất cả địa chỉ đã khai báo phải confirm. Cùng một địa chỉ người trực có thể là địa chỉ confirmed trên cả ba topic, nhưng phải bấm xác nhận riêng cho từng topic. Kiểm tra:
 
 ```powershell
 $fallbackTopic = terraform -chdir=$prodRoot output -raw m12_heartbeat_fallback_topic_arn
@@ -203,7 +203,7 @@ aws cloudwatch describe-alarms `
   --query "MetricAlarms[].{Name:AlarmName,Enabled:ActionsEnabled,Actions:AlarmActions}"
 ```
 
-Mỗi alarm phải có chính xác hai actions cùng region: primary M11 topic và heartbeat-fallback topic. Không đặt global `us-east-1` topic làm action trực tiếp của alarm. Fallback còn `PendingConfirmation` thì trạng thái chỉ là `DEPLOYED/PARTIAL`, chưa được nghiệm thu.
+Mỗi alarm phải có chính xác hai actions cùng region: primary M11 topic và heartbeat-fallback topic. Không đặt global `us-east-1` topic làm action trực tiếp của alarm. Nếu một trong ba topic không có ít nhất một email `Confirmed` thì trạng thái chỉ là `DEPLOYED/PARTIAL`; các subscription pending còn lại không làm heartbeat FAIL.
 
 Sau khi subscription fallback đã `Confirmed`, test đúng integration CloudWatch → primary/fallback trên alarm mới. Lệnh này chỉ đổi trạng thái test của alarm, không sửa audit configuration; chỉ chạy trong approved window và báo trước người trực:
 
@@ -222,7 +222,11 @@ aws lambda invoke --function-name techx-corp-tf3-m12-audit-heartbeat --region $r
 Get-Content -Raw heartbeat-result.json
 ```
 
-Chỉ GO nếu `status=PASS`. Heartbeat kiểm tra trail destination/multi-region/global events/log validation, delivery/digest age, exact selectors, S3 lock/versioning/lifecycle/encryption/public block, toàn bộ deny statement bảo vệ archive (principal/condition/actions/resource), EventBridge pattern/target và semantic `source/eventSource`, hai router, schedule, đầy đủ cấu hình hai alarm, CloudWatch publish policy, subscription trên primary/global/fallback và EKS audit log. Đây là so sánh live state với invariant độc lập, không so Terraform config với chính nó. Khi FAIL, Lambda publish primary/global bằng hai lần thử độc lập; một topic lỗi không được chặn lần thử còn lại. `FAIL` phải fix-forward trước IAM hardening.
+Chỉ GO nếu `status=PASS`. Heartbeat kiểm tra trail destination/multi-region/global events/log validation, delivery tối đa 40 phút, digest tối đa 90 phút, exact selectors, S3 lock/versioning/lifecycle/encryption/public block, toàn bộ deny statement bảo vệ archive (principal/condition/actions/resource), EventBridge pattern/target và semantic `source/eventSource`, hai router, schedule, đầy đủ cấu hình hai alarm, CloudWatch publish policy, tối thiểu một email confirmed trên từng topic primary/global/fallback và EKS audit log.
+
+Exact-check selector chỉ chứng minh live configuration đúng cấu trúc và đúng ARN đã khai báo; nó không tự chứng minh ARN ban đầu bắt được event thật. Bằng chứng end-to-end `GetObject` bên dưới là điều kiện GO độc lập để loại trường hợp Terraform và heartbeat cùng dùng một baseline sai.
+
+Khi một invariant FAIL, Lambda raise error để alarm `m12-audit-heartbeat-errors` chuyển trạng thái và gửi qua primary/fallback. CloudWatch chỉ notification khi alarm đổi trạng thái nên lỗi kéo dài không tạo email mới mỗi 5 phút. Chế độ `forceAlertTest` vẫn publish trực tiếp primary/global để kiểm thử có chủ đích. `FAIL` phải fix-forward trước IAM hardening.
 
 Kiểm tra an toàn hai đường publish trực tiếp mà không tắt/xóa control nào:
 
@@ -237,6 +241,38 @@ Get-Content -Raw heartbeat-alert-test.json
 ```
 
 Chỉ PASS khi kết quả có `status=PASS`, `alertDeliveredTo` gồm cả `ap-southeast-1` và `us-east-1`, `alertDeliveryFailures=[]`, đồng thời người trực nhận được hai test messages. Đây là test runtime có chủ đích trong change window, không thay đổi cấu hình AWS.
+
+### Bằng chứng S3 data-event end-to-end
+
+Không dùng `get-event-selectors` làm bằng chứng duy nhất. Chọn một object canary không nhạy cảm đã tồn tại bên trong **đúng bucket/prefix được owner duyệt**. Không dùng audit bucket và không tự tạo object production chỉ để test.
+
+Trong approved window, đọc đúng một byte để tạo sự kiện `GetObject` mà không tải toàn bộ nội dung:
+
+```powershell
+$canaryBucket = "<approved-sensitive-bucket>"
+$canaryKey = "<approved-prefix/existing-canary-object>"
+$canaryFile = Join-Path $env:TEMP "m12-s3-canary-byte.bin"
+$canaryStartUtc = (Get-Date).ToUniversalTime()
+
+aws s3api get-object `
+  --bucket $canaryBucket `
+  --key $canaryKey `
+  --range "bytes=0-0" `
+  $canaryFile
+
+$canaryEndUtc = (Get-Date).ToUniversalTime()
+Remove-Item -LiteralPath $canaryFile -Force
+```
+
+Chờ CloudTrail delivery, sau đó lấy raw `.json.gz` từ audit bucket trong UTC window trên và parse trường `Records`. Không dùng `cloudtrail lookup-events` vì Event history không phải bằng chứng cho S3 data events. PASS chỉ khi tìm được record có đồng thời:
+
+- `eventSource = s3.amazonaws.com`;
+- `eventName = GetObject`;
+- `requestParameters.bucketName = $canaryBucket`;
+- `requestParameters.key = $canaryKey`;
+- `eventTime` nằm trong test window và identity/request ID được giữ trong evidence.
+
+Lưu key raw log, SHA-256 của file tải về và kết quả `validate-logs` bao phủ cùng window. Không tìm thấy record trong 40 phút thì dừng nghiệm thu: kiểm tra lại exact ARN/prefix, không tự nâng timeout để che coverage sai.
 
 Chờ log object mới sau cutover, lấy key metadata-only và kiểm tra retention:
 
@@ -259,7 +295,7 @@ aws cloudtrail validate-logs `
   --region ap-southeast-1
 ```
 
-Heartbeat log phải `PASS`; direct alert-path test primary/global phải PASS; mọi recipient bắt buộc trên primary/global/fallback phải `Confirmed`; hai alarm phải có primary/fallback actions; mọi alert phát sinh khi apply phải được đối chiếu change ID; canary `GetObject` và `GetSecretValue` có parsed archive evidence. Chưa đủ điều kiện nào thì trạng thái `DEPLOYED/PARTIAL`.
+Heartbeat log phải `PASS`; direct alert-path test primary/global phải PASS; mỗi topic primary/global/fallback có ít nhất một email `Confirmed`; hai alarm phải có primary/fallback actions; mọi alert phát sinh khi apply phải được đối chiếu change ID; canary `GetObject` và `GetSecretValue` có parsed archive evidence. Các subscription pending ngoài email confirmed tối thiểu không chặn nghiệm thu. Chưa đủ điều kiện nào thì trạng thái `DEPLOYED/PARTIAL`.
 
 ### Bằng chứng T10 chống làm mỏng log
 
@@ -303,6 +339,6 @@ Không rollback bằng cách tắt trail/xóa bucket. Selector/router/heartbeat 
 
 ---
 
-**Phiên bản:** v2.2
-**Cập nhật:** 21/07/2026
+**Phiên bản:** v2.3
+**Cập nhật:** 23/07/2026
 **Trạng thái:** HANDOFF READY / NOT APPROVED FOR APPLY — phải hoàn tất dependency và plan gate trong change window

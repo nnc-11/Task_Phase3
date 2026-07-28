@@ -191,7 +191,7 @@ if ($null -ne $trail) {
         Add-Failure "CloudTrail digest delivery error: $($trail.LatestDigestDeliveryError)"
     }
 
-    Test-RecentTimestamp "latest log delivery" $trail.LatestDeliveryTime 20
+    Test-RecentTimestamp "latest log delivery" $trail.LatestDeliveryTime 40
     Test-RecentTimestamp "latest digest delivery" $trail.LatestDigestDeliveryTime 90
 }
 

@@ -23,7 +23,7 @@ Phase 0 chỉ được coi là complete về kỹ thuật. Các blocker owner/S3
 
 ## Phase 1 — Upgrade M11 audit foundation
 
-Thực hiện theo [HD_audit_foundation-v2.2.md](code_audit/HD_audit_foundation-v2.2.md):
+Thực hiện theo [HD_audit_foundation-v2.3.md](code_audit/HD_audit_foundation-v2.3.md):
 
 - sửa module M11 và production inputs;
 - giữ nguyên trail/bucket/topic names;
@@ -44,8 +44,9 @@ Ghi UTC cutover khi apply pass. Xác nhận:
 - `IsLogging=true`, selectors mới đúng;
 - object giao sau cutover có Compliance retain-until >=365 ngày;
 - digest healthy và `validate-logs` pass;
-- heartbeat `PASS`; toàn bộ recipient bắt buộc trên primary, global và heartbeat-fallback SNS ở trạng thái `Confirmed`;
-- hai heartbeat alarm có chính xác primary + fallback cùng region trong `AlarmActions`; heartbeat Lambda có quyền và đã test publish độc lập primary/global;
+- heartbeat `PASS`; mỗi topic primary, global và heartbeat-fallback SNS có tối thiểu một email `Confirmed`;
+- hai heartbeat alarm có chính xác primary + fallback cùng region trong `AlarmActions`; invariant FAIL raise Lambda error để alarm gửi theo state transition; `forceAlertTest` đã chứng minh direct primary/global;
+- mỗi topic primary/global/fallback có tối thiểu một email subscription `Confirmed`; pending subscription khác không chặn nghiệm thu;
 - M11 alerts vẫn hoạt động.
 
 Chỉ từ thời điểm này mới bắt đầu coverage M12.
@@ -60,7 +61,7 @@ Thực hiện riêng theo [HD_iam_hardening-v2.1.md](code_audit/HD_iam_hardening
 
 ## Phase 5 — Mentor tests
 
-Chạy [m12-tests-v2.2.md](m12-tests-v2.2.md). Mutation chỉ bằng bounded test identity. Nếu action đáng lẽ deny nhưng thành công: dừng, preserve evidence, mở Critical incident.
+Chạy [m12-tests-v2.3.md](m12-tests-v2.3.md). Mutation chỉ bằng bounded test identity. Nếu action đáng lẽ deny nhưng thành công: dừng, preserve evidence, mở Critical incident.
 
 ## Rollback
 
@@ -75,6 +76,6 @@ Coverage, integrity, retention, heartbeat, ba đường SNS, alerts, IAM deny te
 
 ---
 
-**Phiên bản:** v2.2
-**Cập nhật:** 21/07/2026
+**Phiên bản:** v2.3
+**Cập nhật:** 23/07/2026
 **Trạng thái:** HANDOFF READY / NOT APPROVED FOR APPLY

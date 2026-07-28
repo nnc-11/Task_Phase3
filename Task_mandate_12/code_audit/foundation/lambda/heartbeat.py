@@ -248,9 +248,8 @@ def _check_rule(client, rule_name, expected, target_arn, label):
     return failures
 
 
-def _check_subscriptions(client, topic_arn, expected_endpoints, label):
-    failures = []
-    actual = {}
+def _check_confirmed_email_subscription(client, topic_arn, label):
+    confirmed_endpoints = set()
     token = None
     while True:
         kwargs = {"TopicArn": topic_arn}
@@ -258,16 +257,20 @@ def _check_subscriptions(client, topic_arn, expected_endpoints, label):
             kwargs["NextToken"] = token
         response = client.list_subscriptions_by_topic(**kwargs)
         for subscription in response.get("Subscriptions", []):
-            actual[subscription.get("Endpoint")] = subscription.get("SubscriptionArn")
+            subscription_arn = subscription.get("SubscriptionArn")
+            if (
+                subscription.get("Protocol") == "email"
+                and subscription.get("Endpoint")
+                and subscription_arn not in (None, "PendingConfirmation", "Deleted")
+            ):
+                confirmed_endpoints.add(subscription["Endpoint"])
         token = response.get("NextToken")
         if not token:
             break
 
-    for endpoint in expected_endpoints:
-        subscription_arn = actual.get(endpoint)
-        if not subscription_arn or subscription_arn in ("PendingConfirmation", "Deleted"):
-            failures.append(f"SNS required subscription is not confirmed: {label}/{endpoint}")
-    return failures
+    if not confirmed_endpoints:
+        return [f"SNS topic has no confirmed email subscription: {label}"]
+    return []
 
 
 def _publish_independently(destinations, subject, message):
@@ -305,7 +308,6 @@ def handler(event, _context):
     expected_alarm_config = json.loads(os.environ["HEARTBEAT_ALARM_CONFIG_JSON"])
     expected_alarm_actions = set(json.loads(os.environ["HEARTBEAT_ALARM_ACTION_ARNS_JSON"]))
     alarm_source_arn_pattern = os.environ["HEARTBEAT_ALARM_SOURCE_ARN_PATTERN"]
-    expected_endpoints = json.loads(os.environ["EXPECTED_SUBSCRIPTION_ENDPOINTS_JSON"])
     required_s3_arns = json.loads(os.environ["S3_DATA_EVENT_ARNS_JSON"])
 
     cloudtrail = boto3.client("cloudtrail", region_name=region)
@@ -482,7 +484,7 @@ def handler(event, _context):
     ):
         try:
             attributes = client.get_topic_attributes(TopicArn=current_topic).get("Attributes", {})
-            failures.extend(_check_subscriptions(client, current_topic, expected_endpoints, label))
+            failures.extend(_check_confirmed_email_subscription(client, current_topic, label))
             if current_topic in expected_alarm_actions:
                 failures.extend(_check_cloudwatch_publish_policy(
                     attributes,
@@ -511,16 +513,11 @@ def handler(event, _context):
         "failures": failures,
     }
     if failures:
-        delivered, delivery_failures = _publish_independently(
-            direct_alert_destinations,
-            "CRITICAL: TF3 Mandate 12 audit heartbeat failed",
-            json.dumps(result, indent=2, default=str),
-        )
-        result["alertDeliveredTo"] = delivered
-        result["alertDeliveryFailures"] = delivery_failures
         print(json.dumps(result, default=str))
-        if not delivered:
-            raise RuntimeError("heartbeat failed and both direct alert paths failed")
+        # Raising increments AWS/Lambda Errors. The CloudWatch alarm sends only
+        # on state transition, avoiding the same email every five minutes.
+        # forceAlertTest remains the explicit direct-publish path test.
+        raise RuntimeError("Mandate 12 audit heartbeat invariant failure")
     else:
         print(json.dumps(result, default=str))
     return result

@@ -6,7 +6,7 @@
 | `iam_hardening/audit_access/` | Audit-admin read-only và break-glass recovery hẹp |
 | `iam_hardening/iam_change/` | Managed boundary động + executor cho identity đã xác nhận ownership; không dùng cho role thuộc state khác |
 | `tools/` | Parse bản sao CloudTrail log thành evidence redacted |
-| `HD_audit_foundation-v2.2.md` | Discovery → edit M11 → plan/apply → cutover evidence |
+| `HD_audit_foundation-v2.3.md` | Discovery → edit M11 → plan/apply → cutover evidence |
 | `HD_iam_hardening-v2.1.md` | IAM ownership → audit access → boundary → migration/test |
 
 Không copy `.terraform`, state, plan hoặc credential. Foundation v2 sửa chính M11 trong `infra/live/production`; IAM hardening vẫn là change/root riêng.
@@ -15,6 +15,6 @@ Live discovery 21/07/2026 đã xác nhận trail M11 đang chạy và EKS audit 
 
 ---
 
-**Phiên bản:** v2.2
+**Phiên bản:** v2.3
 **Cập nhật:** 21/07/2026
 **Trạng thái:** STAGING ONLY — chưa deploy

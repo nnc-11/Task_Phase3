@@ -6,8 +6,8 @@ Chỉ test sau approval, dùng canary/bounded identity. Không test root, produc
 
 ## Pre-test live gate
 
-- Revalidate đúng trail/bucket live đã ghi trong `m12-solution-v2.2.md`.
-- Không chạy test khi còn SNS recipient bắt buộc `PendingConfirmation`.
+- Revalidate đúng trail/bucket live đã ghi trong `m12-solution-v2.3.md`.
+- Chỉ chạy nghiệm thu khi mỗi topic primary/global/fallback có tối thiểu một email `Confirmed`; pending subscription khác không chặn test.
 - Deployment/test identity phải có MFA hoặc là approved short-lived role; không dùng root và không dùng access key tĩnh mới.
 - Exact S3 canary prefix phải có owner approval và nằm trong selector; không dùng một trong các production object hiện hữu.
 
@@ -21,7 +21,7 @@ Chỉ test sau approval, dùng canary/bounded identity. Không test root, produc
 | T04 | `GetSecretValue` canary | Parsed management event; evidence không có value |
 | T05 | Integrity | `validate-logs` sau cutover không missing/`INVALID` |
 | T06 | Retention | Object mới sau cutover có `COMPLIANCE` retain-until >=365 ngày; lifecycle 400 |
-| T07 | Heartbeat | 5-minute invocation; exact trail/selectors/bucket deny/source semantics/rule-target/router/full alarm config/three-topic policy+subscription checks `PASS`; log age <=20, digest age <=90; EKS audit enabled |
+| T07 | Heartbeat | 5-minute invocation; exact trail/selectors/bucket deny/source semantics/rule-target/router/full alarm config/three-topic policy checks `PASS`; mỗi topic có ≥1 email confirmed; log age <=40, digest age <=90; invariant FAIL đi qua Errors alarm; EKS audit enabled |
 | T08 | Alert controls | EventBridge/SNS/Lambda/CloudWatch mutation denied; group 7 alert nhận được; primary topic lỗi giả lập có global/fallback receipt phù hợp |
 | T09 | IAM | Boundary/trust/policy/OIDC mutation denied; global group 8 alert; CI/ops baseline pass |
 | T10 | Thin-log/forensic | Approved `PutMetricAlarm`/`PutRule`: pre-state + plan → redacted `requestParameters` → post-state; đồng thời dựng identity → session → action → resource → UTC/request ID |
@@ -71,6 +71,6 @@ Chỉ `VERIFIED` khi T01–T11 pass, coverage/IAM complete, cutover timestamp r�
 
 ---
 
-**Phiên bản:** v2.2
-**Cập nhật:** 21/07/2026
+**Phiên bản:** v2.3
+**Cập nhật:** 23/07/2026
 **Trạng thái:** HANDOFF READY / NOT EXECUTED IN PRODUCTION

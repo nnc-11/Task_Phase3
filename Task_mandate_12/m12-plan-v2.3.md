@@ -2,7 +2,7 @@
 
 > **TF3 · AWS account `197826770971` · `ap-southeast-1`**
 >
-> **Phiên bản:** v2.2 · **Cập nhật:** 21/07/2026
+> **Phiên bản:** v2.3 · **Cập nhật:** 23/07/2026
 >
 > **Trạng thái:** `HANDOFF READY / NOT APPROVED FOR APPLY`
 
@@ -105,7 +105,7 @@ flowchart LR
 | Audit bucket | Governance 14 → Compliance 365 cho object mới; lifecycle 400 | Không tạo bucket mới; không claim hồi tố object cũ |
 | Router | Critical groups `1/2/3/4/7/8` luôn alert; thêm regional group 7 và global group 8 | Automation/suppression không che anti-audit/IAM tamper |
 | EventBridge/SNS | Mở rộng rule; giữ primary/global và thêm fallback cùng region | Recipient trên cả ba topic bắt buộc Confirmed |
-| Heartbeat | Lambda publish độc lập primary/global; Errors/Missing alarms dùng primary + fallback; thêm CloudWatch publish policy giới hạn | Một SNS path lỗi không ngăn path còn lại; không dùng cross-region SNS làm alarm action |
+| Heartbeat | Invariant FAIL raise Lambda error; Errors/Missing alarms dùng primary + fallback theo state transition; `forceAlertTest` dùng primary/global | Lỗi kéo dài không gửi cùng email mỗi 5 phút; direct path vẫn được kiểm thử; không dùng cross-region SNS làm alarm action |
 | IAM | Audit access + tailored boundary/least privilege | Change riêng, đúng state owner, rollout từng identity |
 
 ## 6. Dependency và gate trước triển khai
@@ -146,7 +146,7 @@ Dừng nếu xảy ra một trong các điều kiện:
 
 ## 8. Phase Audit Foundation
 
-Thực hiện chi tiết theo [HD_audit_foundation-v2.2.md](code_audit/HD_audit_foundation-v2.2.md).
+Thực hiện chi tiết theo [HD_audit_foundation-v2.3.md](code_audit/HD_audit_foundation-v2.3.md).
 
 ### 8.1 Vị trí áp dụng staging files
 
@@ -187,7 +187,7 @@ Advanced selectors phải giữ `eventCategory=Management` và thêm `eventCateg
 4. Chờ object mới sau cutover và xác nhận `Mode=COMPLIANCE`, retain-until tối thiểu 365 ngày.
 5. Chờ digest đủ bao phủ; dùng ngưỡng 90 phút rồi chạy `validate-logs` đúng region.
 6. Xác nhận heartbeat `PASS`, schedule 5 phút và Errors/Missing alarms healthy; `AlarmActions` đúng primary + fallback.
-7. Recipient xác nhận subscription fallback mới; sau đó xác nhận toàn bộ recipient trên primary/global/fallback `Confirmed` và nhận test alert.
+7. Xác nhận tối thiểu một email subscription trên từng topic primary/global/fallback và chứng minh người trực nhận test alert; pending subscription khác không chặn nghiệm thu.
 8. Đối chiếu mọi g7/g8 CRITICAL alert trong apply với change ID; sự kiện không khớp phải mở incident.
 
 ## 9. Phase IAM Hardening
@@ -222,7 +222,7 @@ Thực hiện riêng theo [HD_iam_hardening-v2.1.md](code_audit/HD_iam_hardening
 | T04 | Canary `GetSecretValue` | Management event có metadata; không có `SecretString`/`SecretBinary` |
 | T05 | Integrity | `validate-logs` không `INVALID`/missing trong window |
 | T06 | Retention | Object mới `COMPLIANCE >=365 ngày`; lifecycle 400 |
-| T07 | Heartbeat | Invocation 5 phút; PASS; log age ≤20; digest age ≤90; alarm primary/fallback và Lambda primary/global hoạt động độc lập |
+| T07 | Heartbeat | Invocation 5 phút; PASS; log age ≤40; digest age ≤90; mỗi topic có ≥1 email confirmed; alarm primary/fallback và `forceAlertTest` primary/global hoạt động |
 | T08 | Alert-plane tamper | Denied + group 7 alert + post-state không đổi |
 | T09 | IAM escalation | Boundary/trust/policy/OIDC mutation `explicitDeny` |
 | T10 | Thin-log/forensic | Approved `PutMetricAlarm`/`PutRule` nối pre-state/plan → redacted request parameters → post-state và identity/session/request ID |
@@ -275,7 +275,7 @@ Không ghi credential, access-key ID, secret value hoặc production object cont
 
 - [ ] Owner/state/change window được phê duyệt.
 - [ ] Exact S3 scope được ký và khớp 1:1 với Terraform input.
-- [ ] Không còn recipient bắt buộc `PendingConfirmation` trên primary/global/fallback.
+- [ ] Mỗi topic primary/global/fallback có tối thiểu một email `Confirmed`; pending subscription khác không chặn nghiệm thu.
 - [ ] Change ID có Git SHA, saved-plan hash, identity, UTC window, expected action và người trực nhận cảnh báo.
 - [ ] Saved plan không replace/delete trail hoặc bucket và không có workload drift.
 - [ ] Trail logging, selectors, delivery, digest và heartbeat pass sau cutover.
@@ -295,10 +295,10 @@ Không ghi credential, access-key ID, secret value hoặc production object cont
 | [m12-gap-v2.0.md](m12-gap-v2.0.md) | Baseline live và gap |
 | [m12-coverage-v2.1.md](m12-coverage-v2.1.md) | S3/secret/control coverage |
 | [m12-iam-scope-v2.0.md](m12-iam-scope-v2.0.md) | IAM ownership và migration |
-| [m12-solution-v2.2.md](m12-solution-v2.2.md) | Kiến trúc và trade-off |
-| [m12-runbook-v2.2.md](m12-runbook-v2.2.md) | Phase, gate và rollback |
-| [m12-tests-v2.2.md](m12-tests-v2.2.md) | Test matrix và evidence |
-| [HD_audit_foundation-v2.2.md](code_audit/HD_audit_foundation-v2.2.md) | Foundation step-by-step |
+| [m12-solution-v2.3.md](m12-solution-v2.3.md) | Kiến trúc và trade-off |
+| [m12-runbook-v2.3.md](m12-runbook-v2.3.md) | Phase, gate và rollback |
+| [m12-tests-v2.3.md](m12-tests-v2.3.md) | Test matrix và evidence |
+| [HD_audit_foundation-v2.3.md](code_audit/HD_audit_foundation-v2.3.md) | Foundation step-by-step |
 | [HD_iam_hardening-v2.1.md](code_audit/HD_iam_hardening-v2.1.md) | IAM step-by-step |
 
 ## 16. Nguồn kỹ thuật
@@ -312,8 +312,8 @@ Không ghi credential, access-key ID, secret value hoặc production object cont
 
 ---
 
-**Phiên bản:** v2.2
+**Phiên bản:** v2.3
 
-**Cập nhật:** 21/07/2026
+**Cập nhật:** 23/07/2026
 
 **Trạng thái:** HANDOFF READY / NOT APPROVED FOR APPLY

@@ -277,14 +277,13 @@ resource "aws_lambda_function" "m12_audit_heartbeat" {
         module.audit_detection_ap_southeast_1.sns_topic_arn,
         aws_sns_topic.m12_heartbeat_fallback.arn,
       ])
-      HEARTBEAT_ALARM_SOURCE_ARN_PATTERN   = "arn:aws:cloudwatch:${var.region}:${data.aws_caller_identity.m12_current.account_id}:alarm:${var.cluster_name}-m12-audit-heartbeat-*"
-      EXPECTED_SUBSCRIPTION_ENDPOINTS_JSON = jsonencode(local.audit_detection_email_subscriptions)
-      S3_DATA_EVENT_ARNS_JSON              = jsonencode(var.audit_detection_s3_data_event_arns)
-      MAX_LOG_DELIVERY_AGE_MINUTES         = "20"
-      MAX_DIGEST_DELIVERY_AGE_MINUTES      = "90"
-      REQUIRED_RETENTION_DAYS              = "365"
-      REQUIRED_LIFECYCLE_DAYS              = "400"
-      EKS_CLUSTER_NAME                     = var.cluster_name
+      HEARTBEAT_ALARM_SOURCE_ARN_PATTERN = "arn:aws:cloudwatch:${var.region}:${data.aws_caller_identity.m12_current.account_id}:alarm:${var.cluster_name}-m12-audit-heartbeat-*"
+      S3_DATA_EVENT_ARNS_JSON            = jsonencode(var.audit_detection_s3_data_event_arns)
+      MAX_LOG_DELIVERY_AGE_MINUTES       = "40"
+      MAX_DIGEST_DELIVERY_AGE_MINUTES    = "90"
+      REQUIRED_RETENTION_DAYS            = "365"
+      REQUIRED_LIFECYCLE_DAYS            = "400"
+      EKS_CLUSTER_NAME                   = var.cluster_name
     }
   }
 

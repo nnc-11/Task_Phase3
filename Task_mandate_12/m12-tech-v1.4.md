@@ -134,7 +134,7 @@ Daily/CI identities ─> least privilege + permissions boundary ─| audit kill 
 
 - Lambda router chuẩn hóa event thành cảnh báo có actor, session, action, resource, thời gian và request ID.
 - Router gửi tới SNS primary/global đang kế thừa từ M11.
-- Các subscription bắt buộc phải ở trạng thái `Confirmed`; `PendingConfirmation` không được coi là đường cảnh báo hoạt động.
+- Mỗi topic primary/global/fallback phải có tối thiểu một email subscription `Confirmed`; pending subscription khác không làm heartbeat FAIL.
 
 ### 4.5 Heartbeat Lambda mỗi 5 phút
 
@@ -150,14 +150,14 @@ Heartbeat không chờ có tamper event mới kiểm tra. Nó đọc live state 
 
 Heartbeat phải so **live state với invariant đã định nghĩa độc lập**, không so Terraform config với chính nó.
 
-Schedule 5 phút không đồng nghĩa mọi lỗi được phát hiện trong đúng 5 phút. Thiết kế chấp nhận log age tối đa 20 phút và digest age tối đa 90 phút để phù hợp delivery latency; vượt ngưỡng mới FAIL. Phải nói đây là **bounded detection theo threshold**, không phải “zero-second detection”.
+Schedule 5 phút không đồng nghĩa mọi lỗi được phát hiện trong đúng 5 phút. Thiết kế chấp nhận log age tối đa 40 phút và digest age tối đa 90 phút để giảm cảnh báo giả do delivery latency; vượt ngưỡng mới FAIL. Phải nói đây là **bounded detection theo threshold**, không phải “zero-second detection”.
 
 ### 4.6 CloudWatch alarms và SNS fallback
 
 - Alarm `Errors` phát hiện heartbeat chạy nhưng lỗi.
 - Alarm `Missing` phát hiện heartbeat không còn phát metric/invocation như dự kiến.
 - Hai alarm gửi tới primary SNS và một fallback SNS cùng region.
-- Khi heartbeat tự phát hiện invariant fail, Lambda thử publish primary và global theo hai lần độc lập; một topic lỗi không được ngăn lần thử còn lại.
+- Khi heartbeat phát hiện invariant fail, Lambda raise error để CloudWatch Errors alarm gửi primary và fallback khi trạng thái đổi, tránh gửi lại cùng lỗi mỗi 5 phút. Direct primary/global chỉ chạy trong `forceAlertTest`.
 - Fallback SNS dùng KMS key riêng; primary topic phải có cả SNS topic policy và KMS key-policy grant phù hợp cho CloudWatch alarm publisher. Chỉ có topic policy mà thiếu KMS grant có thể khiến alarm delivery thất bại.
 
 Kết quả: nếu admin không bị chặn hoàn toàn thì lệnh phá audit vẫn phải tạo event/alert; nếu delivery hoặc chính heartbeat im lặng thì alarm phát hiện blind window.
@@ -241,7 +241,7 @@ Object Lock chỉ bảo vệ log sau khi log đã tới S3. Attacker vẫn có t
 
 ### 7.4 Trách nhiệm và đường cảnh báo của heartbeat
 
-Mỗi 5 phút heartbeat kiểm tra trail, delivery, digest, selector, Object Lock/lifecycle, bucket policy, EventBridge targets, routers, alarms, SNS subscriptions, EKS audit và boundary thuộc scope. Khi phát hiện invariant sai, Lambda thử gửi độc lập tới SNS Primary và Global. Nếu heartbeat lỗi hoặc ngừng chạy, CloudWatch `Errors/Missing` alarms gửi tới SNS Primary và Fallback. Người nhận cuối là Security Owner/người trực có subscription `Confirmed`.
+Mỗi 5 phút heartbeat kiểm tra trail, delivery, digest, selector, Object Lock/lifecycle, bucket policy, EventBridge targets, routers, alarms, SNS subscriptions, EKS audit và boundary thuộc scope. Khi phát hiện invariant sai hoặc runtime lỗi, Lambda Errors alarm gửi tới SNS Primary và Fallback theo state transition; nếu heartbeat ngừng chạy, Missing alarm gửi cùng hai đường. `forceAlertTest` kiểm chứng direct Primary/Global. Người nhận cuối là Security Owner/người trực có subscription `Confirmed`.
 
 ### 7.5 Cách chứng minh coverage gap đã được đóng
 
@@ -340,6 +340,6 @@ Nếu chỉ Foundation pass nhưng IAM chưa hoàn thành, trạng thái là `AU
 
 ---
 
-**Phiên bản:** v1.3  
+**Phiên bản:** v1.4  
 **Cập nhật:** 23/07/2026  
 **Trạng thái:** DESIGN REVIEWED / NOT RUNTIME VERIFIED
